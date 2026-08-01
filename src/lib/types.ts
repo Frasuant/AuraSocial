@@ -73,4 +73,5 @@ export type ViewName =
   | "discovery"
   | "postDetail"
   | "drafts"
-  | "activity";
+  | "activity"
+  | "profileViews";

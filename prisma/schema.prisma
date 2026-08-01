@@ -31,6 +31,8 @@ model User {
   notifications Notification[]
   sentNotifications Notification[] @relation("NotificationActor")
   reports       Report[]      @relation("ReportReporter")
+  profileViews  ProfileView[] @relation("ProfileViewed")
+  viewedProfiles ProfileView[] @relation("ProfileViewer")
 }
 
 model Post {
@@ -129,4 +131,16 @@ model Bookmark {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
+}
+
+model ProfileView {
+  id        String   @id @default(cuid())
+  viewedId  String
+  viewerId  String
+  createdAt DateTime @default(now())
+
+  viewed User @relation("ProfileViewed", fields: [viewedId], references: [id], onDelete: Cascade)
+  viewer User @relation("ProfileViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@unique([viewedId, viewerId])
 }

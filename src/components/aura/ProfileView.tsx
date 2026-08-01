@@ -32,6 +32,10 @@ export function ProfileView() {
         if (cancelled) return;
         setProfile(r.user);
         setPosts(r.posts);
+        // Record the profile view (non-blocking, non-fatal)
+        if (r.user && !r.user.isMe) {
+          aura.recordProfileView(profileUsername).catch(() => {});
+        }
       })
       .catch((e) => !cancelled && toast({ title: "Couldn't load profile", description: e.message, variant: "destructive" }))
       .finally(() => !cancelled && setLoading(false));

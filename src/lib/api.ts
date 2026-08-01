@@ -104,6 +104,24 @@ export const aura = {
         repostOf?: any;
       }>;
     }>("/api/activity"),
+  recordProfileView: (username: string) =>
+    api<{ ok: boolean }>(`/api/users/${username}/view`, { method: "POST" }),
+  profileViews: () =>
+    api<{
+      totalViews: number;
+      viewers: Array<{
+        id: string;
+        username: string;
+        bio: string;
+        avatarUrl: string;
+        avatarColor: string;
+        isVerified: boolean;
+        isAdmin: boolean;
+        followerCount: number;
+        postCount: number;
+        viewedAt: string;
+      }>;
+    }>("/api/profile-views"),
 
   // Upload
   upload: (file: File) => {

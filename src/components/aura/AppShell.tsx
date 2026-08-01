@@ -16,6 +16,7 @@ import {
   Sparkles,
   FileEdit,
   Activity,
+  Eye,
 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -33,7 +34,9 @@ import { DiscoveryView } from "./DiscoveryView";
 import { PostDetailView } from "./PostDetailView";
 import { DraftsView } from "./DraftsView";
 import { ActivityView } from "./ActivityView";
+import { ProfileViewsView } from "./ProfileViewsView";
 import { SuggestedUsersWidget } from "./SuggestedUsersWidget";
+import { ThemeToggle } from "./ThemeToggle";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { EditPostDialog } from "./EditPostDialog";
 import { EditProfileDialog } from "./EditProfileDialog";
@@ -83,6 +86,7 @@ export function AppShell() {
     { id: "bookmarks" as const, label: "Saved", icon: Bookmark },
     { id: "drafts" as const, label: "Drafts", icon: FileEdit },
     { id: "activity" as const, label: "Activity", icon: Activity },
+    { id: "profileViews" as const, label: "Views", icon: Eye },
     {
       id: "notifications" as const,
       label: "Alerts",
@@ -132,6 +136,9 @@ export function AppShell() {
               </span>
             )}
           </button>
+
+          {/* Theme toggle */}
+          <ThemeToggle />
 
           {user?.isAdmin && (
             <button
@@ -218,7 +225,7 @@ export function AppShell() {
               Log out
             </button>
             <p className="px-3 text-[10px] text-muted-foreground/60">
-              AuraMedia · v1.8 · AuraGuard AI active
+              AuraMedia · v1.9 · AuraGuard AI active
             </p>
           </div>
         </aside>
@@ -232,6 +239,7 @@ export function AppShell() {
           {view === "bookmarks" && <BookmarksView />}
           {view === "drafts" && <DraftsView />}
           {view === "activity" && <ActivityView />}
+          {view === "profileViews" && <ProfileViewsView />}
           {view === "postDetail" && <PostDetailView />}
           {view === "notifications" && <NotificationsView />}
           {view === "followers" && <FollowListView mode="followers" />}

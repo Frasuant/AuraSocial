@@ -713,3 +713,76 @@ Task: QA the app, add suggested users widget on feed sidebar, your activity view
 - Add image alt text for accessibility.
 - Add a "who viewed your profile" feature.
 - Add a dark/light theme toggle.
+
+---
+
+## Task ID: 12 (webDevReview — theme toggle, profile views tracking)
+Agent: webDevReview (cron)
+Task: QA the app, add dark/light theme toggle, profile views tracking.
+
+### Current project status (assessment)
+- App was stable at v1.8 (all previous features working: feed, discovery, trending, bookmarks, notifications, search, profile editing, report post, post deletion/editing, liked posts, rate limiting, followers/following lists, post detail view, repost feature, @mentions, #hashtag autocomplete, image carousel, hashtag suggestions, bio search, drafts, edit images, reposts view, suggested users widget, activity view).
+- QA via curl: all endpoints return 200, zero errors. 4 users, 9 posts, 1 flagged, 2 verified.
+- No bugs found — proceeded to add new features per next-phase recommendations.
+
+### Completed modifications
+
+**Schema change:**
+- Added `ProfileView` model (id, viewedId, viewerId, createdAt) with `@@unique([viewedId, viewerId])` — tracks who viewed whose profile. Added `profileViews ProfileView[] @relation("ProfileViewed")` + `viewedProfiles ProfileView[] @relation("ProfileViewer")` to User. Re-pushed schema + regenerated seed.db.
+
+**New features (2):**
+
+1. **Dark/light theme toggle** (`ThemeProvider` + `ThemeToggle` + light theme in CSS):
+   - Integrated `next-themes` (was already installed) via a new `ThemeProvider` component (attribute="class", defaultTheme="dark").
+   - Updated `layout.tsx`: removed hardcoded `className="dark"` from `<html>`, wrapped children in `<ThemeProvider>`.
+   - Rewrote `globals.css`: `:root` now defines the **light theme** (white/near-white backgrounds, dark text, violet primary), `.dark` keeps the dark premium theme. Body background gradients are theme-aware (lighter in light mode, full-strength in dark mode).
+   - New `ThemeToggle` component: animated Moon/Sun icon button with framer-motion rotate+scale transitions. Renders a placeholder until mounted (avoids hydration mismatch).
+   - Placed in the header next to the notifications bell.
+   - Theme persists via next-themes localStorage.
+
+2. **Profile views tracking** (`POST /api/users/[username]/view` + `GET /api/profile-views` + `ProfileViewsView`):
+   - When a logged-in user views someone else's profile, a `POST /api/users/[username]/view` is fired (non-blocking, non-fatal) — upserts a `ProfileView` record (updates timestamp if already exists).
+   - Self-views and anonymous views are not tracked.
+   - New `GET /api/profile-views` endpoint returns the current user's profile viewers (most recent first, capped at 50) + total count.
+   - New `ProfileViewsView` component: indigo/purple gradient header with Eye icon, shows total views, list of viewers with avatar, username (verified badge), follower/post counts, "viewed X ago" timestamp, and Follow button.
+   - "Views" nav item (Eye icon) in sidebar.
+   - framer-motion staggered entrance, empty state "👀 No views yet — When other grinders visit your profile, they'll show up here."
+   - Verified: Admin viewed MarcoFlex's profile → MarcoFlex's profile-views shows 1 viewer: Admin ✓.
+
+**Files changed:**
+- `prisma/schema.prisma` — added ProfileView model + relations.
+- `src/app/globals.css` — light theme in `:root`, dark theme in `.dark`, theme-aware body gradients.
+- `src/app/layout.tsx` — wrapped in ThemeProvider, removed hardcoded dark class.
+- `src/components/aura/ThemeProvider.tsx` (new) — next-themes provider.
+- `src/components/aura/ThemeToggle.tsx` (new) — animated theme toggle button.
+- `src/app/api/users/[username]/view/route.ts` (new) — record profile view.
+- `src/app/api/profile-views/route.ts` (new) — list profile viewers.
+- `src/lib/api.ts` — added `recordProfileView()` + `profileViews()`.
+- `src/lib/types.ts` — added "profileViews" to ViewName.
+- `src/components/aura/ProfileViewsView.tsx` (new) — profile viewers list.
+- `src/components/aura/ProfileView.tsx` — records profile view on load (non-self only).
+- `src/components/aura/AppShell.tsx` — wired ThemeToggle + ProfileViewsView + Eye nav icon.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- API tests (curl):
+  - record view (Admin → MarcoFlex) → `{"ok":true}` ✓.
+  - profile-views (as MarcoFlex) → `1 total: ['Admin']` ✓ (MarcoFlex sees Admin viewed him).
+  - profile-views (as Admin) → `0 total` ✓ (nobody viewed Admin yet).
+- agent-browser E2E: login ✓, theme toggle button "Switch to light mode" visible in header ✓, "Views" nav button ✓, Profile Views view renders "Profile Views" + "No views yet" empty state ✓.
+- Dev log: zero errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation). Worked around with warmup + single-session tests.
+- In-memory rate limiter is per-process — for multi-instance production (Vercel), swap with Redis/Upstash.
+- The `/tmp` SQLite fallback on Vercel still doesn't persist — Turso remains the recommended fix.
+- Light theme needs visual QA on all views (post detail, admin console, dialogs) — the CSS variables should cascade correctly but some hardcoded dark colors in components may need adjustment.
+
+### Priority recommendations for next phase
+- Add direct messages (DM) between users (real-time via WebSocket mini-service).
+- Add email verification on signup.
+- Add post scheduling (publish a draft at a future time).
+- Add image alt text for accessibility.
+- Audit all components for hardcoded dark colors (e.g. `bg-black/20`, `text-white`) and make them theme-aware.
+- Add a "mute/block users" feature.
+- Add post analytics (impressions, reach) for the author.
