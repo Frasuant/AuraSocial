@@ -65,6 +65,38 @@ export const aura = {
     return api<{ url: string }>("/api/upload", { method: "POST", body: fd });
   },
 
+  // Profile editing
+  updateProfile: (body: { bio?: string; avatarColor?: string; avatarUrl?: string }) =>
+    api<{ user: AuraUser }>("/api/users/me", { method: "PATCH", body: JSON.stringify(body) }),
+
+  // Report post
+  reportPost: (postId: string, reason: string) =>
+    api<{ reported: boolean; openReports?: number }>(`/api/posts/${postId}/report`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  // Notifications
+  notifications: () =>
+    api<{
+      notifications: Array<{
+        id: string;
+        type: string;
+        postId: string | null;
+        content: string;
+        read: boolean;
+        createdAt: string;
+        actor: { id: string; username: string; avatarUrl: string; avatarColor: string; isVerified: boolean; isAdmin: boolean };
+      }>;
+      unreadCount: number;
+    }>("/api/notifications"),
+  markNotificationsRead: () =>
+    api<{ ok: boolean }>("/api/notifications/read", { method: "POST" }),
+
+  // Search
+  search: (q: string) =>
+    api<{ posts: Post[]; users: AuraUser[] }>(`/api/search?q=${encodeURIComponent(q)}`),
+
   // Admin
   adminUsers: () => api<{ users: AuraUser[] }>("/api/admin/users"),
   adminVerify: (userId: string, verified: boolean) =>
@@ -98,4 +130,6 @@ export const aura = {
       note: string;
       databaseUrl: string;
     }>("/api/admin/db-status"),
+  adminReports: () =>
+    api<{ reports: any[] }>("/api/admin/reports"),
 };

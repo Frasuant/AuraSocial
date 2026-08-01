@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, MessageCircle, Share2, Flag, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { categoryMeta } from "@/lib/constants";
 import { aura } from "@/lib/api";
@@ -11,6 +12,30 @@ import { cn, timeAgo, formatNumber } from "@/lib/utils";
 import type { Post, Comment } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
+const REPORT_REASONS = [
+  { value: "spam", label: "Spam or repetitive", emoji: "📨" },
+  { value: "scam", label: "Scam or fraud", emoji: "🎣" },
+  { value: "harassment", label: "Harassment or bullying", emoji: "😠" },
+  { value: "hate", label: "Hate speech", emoji: "🚫" },
+  { value: "explicit", label: "Explicit content", emoji: "🔞" },
+  { value: "illegal", label: "Illegal goods/services", emoji: "⚖️" },
+  { value: "other", label: "Something else", emoji: "❓" },
+];
 
 export function PostCard({ post }: { post: Post }) {
   const { user, viewProfile, bumpFeed } = useApp();
@@ -22,6 +47,9 @@ export function PostCard({ post }: { post: Post }) {
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
   const [optimistic, setOptimistic] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reported, setReported] = useState(false);
   const cat = categoryMeta(post.category);
 
   const toggleLike = async () => {
@@ -42,6 +70,23 @@ export function PostCard({ post }: { post: Post }) {
       toast({ title: "Couldn't update like", description: e.message, variant: "destructive" });
     } finally {
       setOptimistic(false);
+    }
+  };
+
+  const submitReport = async (reason: string) => {
+    setReporting(true);
+    try {
+      await aura.reportPost(post.id, reason);
+      setReported(true);
+      toast({
+        title: "Reported ✓",
+        description: "Thanks for keeping AuraMedia clean. Admins will review it.",
+      });
+      setReportOpen(false);
+    } catch (e: any) {
+      toast({ title: "Couldn't report", description: e.message, variant: "destructive" });
+    } finally {
+      setReporting(false);
     }
   };
 
@@ -159,15 +204,23 @@ export function PostCard({ post }: { post: Post }) {
             liked ? "text-rose-400" : "text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
           )}
         >
-          <Heart className={cn("h-5 w-5 transition", liked && "fill-rose-500 scale-110")} />
-          <span className="font-medium">{formatNumber(likeCount)}</span>
+          <motion.span
+            key={liked ? "liked" : "unliked"}
+            initial={liked ? { scale: [1, 1.4, 1] } : false}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="inline-flex"
+          >
+            <Heart className={cn("h-5 w-5 transition", liked && "fill-rose-500")} />
+          </motion.span>
+          <span className="font-medium tabular-nums">{formatNumber(likeCount)}</span>
         </button>
         <button
           onClick={toggleComments}
           className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-muted-foreground transition hover:text-sky-300 hover:bg-sky-500/10 active:scale-95"
         >
           <MessageCircle className="h-5 w-5" />
-          <span className="font-medium">{formatNumber(post.commentCount)}</span>
+          <span className="font-medium tabular-nums">{formatNumber(post.commentCount)}</span>
         </button>
         <button
           onClick={share}
@@ -175,6 +228,25 @@ export function PostCard({ post }: { post: Post }) {
         >
           <Share2 className="h-5 w-5" />
         </button>
+        <div className="ml-auto">
+          {user && post.author && user.id !== post.author.id && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="rounded-full p-2 text-muted-foreground transition hover:bg-white/5 hover:text-foreground active:scale-95">
+                  <MoreHorizontal className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => setReportOpen(true)}
+                  className="text-amber-300 focus:text-amber-200 focus:bg-amber-500/10 cursor-pointer"
+                >
+                  <Flag className="h-4 w-4 mr-2" /> Report post
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {/* Comments */}
@@ -238,6 +310,34 @@ export function PostCard({ post }: { post: Post }) {
           )}
         </div>
       )}
+
+      {/* Report dialog */}
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-md bg-card border-white/10">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Flag className="h-5 w-5 text-amber-400" /> Report this post
+            </DialogTitle>
+            <DialogDescription>
+              Why are you reporting this? Our admins review every report. Posts that get 3+ reports
+              are auto-hidden pending review.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {REPORT_REASONS.map((r) => (
+              <button
+                key={r.value}
+                disabled={reporting}
+                onClick={() => submitReport(r.value)}
+                className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5 text-sm text-left hover:bg-white/10 transition disabled:opacity-50"
+              >
+                <span className="text-lg">{r.emoji}</span>
+                <span className="font-medium">{r.label}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }

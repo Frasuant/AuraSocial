@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarDays, UserMinus, UserPlus, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, CalendarDays, UserMinus, UserPlus, Loader2, Pencil, LogOut } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +12,7 @@ import { formatNumber, timeAgo } from "@/lib/utils";
 import type { AuraUser, Post } from "@/lib/types";
 
 export function ProfileView() {
-  const { profileUsername, user: me, setView, setUser } = useApp();
+  const { profileUsername, user: me, setView, setUser, setEditProfileOpen } = useApp();
   const { toast } = useToast();
   const [profile, setProfile] = useState<AuraUser | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -91,15 +91,25 @@ export function ProfileView() {
             />
             <div className="flex gap-2">
               {isMe ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setUser(null);
-                    setView("feed");
-                  }}
-                >
-                  <Settings className="h-4 w-4 mr-1" /> Log out
-                </Button>
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setEditProfileOpen(true)}
+                  >
+                    <Pencil className="h-4 w-4 mr-1.5" /> Edit profile
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      aura.logout().catch(() => {});
+                      setUser(null);
+                      setView("feed");
+                    }}
+                    className="hover:bg-rose-500/15 hover:text-rose-300"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </>
               ) : (
                 <Button
                   onClick={follow}

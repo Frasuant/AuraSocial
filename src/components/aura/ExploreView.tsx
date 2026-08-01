@@ -1,35 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Search, UserPlus, Check } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Loader2, Search, UserPlus, Check, Hash, X } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar } from "./Avatar";
+import { PostCard } from "./PostCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatNumber } from "@/lib/utils";
-import type { AuraUser } from "@/lib/types";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { categoryMeta } from "@/lib/constants";
+import { cn, formatNumber, timeAgo } from "@/lib/utils";
+import type { AuraUser, Post } from "@/lib/types";
 
 export function ExploreView() {
   const { viewProfile } = useApp();
   const { toast } = useToast();
-  const [users, setUsers] = useState<AuraUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [suggested, setSuggested] = useState<AuraUser[]>([]);
+  const [loadingSug, setLoadingSug] = useState(true);
   const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ posts: Post[]; users: AuraUser[] } | null>(null);
+  const [searching, setSearching] = useState(false);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     aura
       .explore()
-      .then((r) => setUsers(r.users))
+      .then((r) => setSuggested(r.users))
       .catch((e) => toast({ title: "Couldn't load", description: e.message, variant: "destructive" }))
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingSug(false));
   }, [toast]);
 
-  const filtered = users.filter((u) =>
-    u.username.toLowerCase().includes(query.toLowerCase())
-  );
+  // debounced search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!query.trim()) {
+      setSearchResults(null);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const r = await aura.search(query.trim());
+        setSearchResults(r);
+      } catch (e: any) {
+        toast({ title: "Search failed", description: e.message, variant: "destructive" });
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, toast]);
 
   const follow = async (u: AuraUser) => {
     try {
@@ -45,11 +71,14 @@ export function ExploreView() {
     }
   };
 
+  const hasSearch = query.trim().length > 0;
+  const showResults = hasSearch && searchResults;
+
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Discover</h1>
-        <p className="text-sm text-muted-foreground">Find grinders worth following.</p>
+        <p className="text-sm text-muted-foreground">Search posts, hashtags & grinders to follow.</p>
       </div>
 
       <div className="relative">
@@ -57,66 +86,162 @@ export function ExploreView() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by username…"
-          className="pl-9 bg-white/5 border-white/10"
+          placeholder="Search by username, caption, or #hashtag…"
+          className="pl-9 pr-9 bg-white/5 border-white/10"
         />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center text-sm text-muted-foreground">
-          {query ? "No users match your search." : "No users to show right now."}
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 gap-3">
-          {filtered.map((u) => {
-            const isFollowing = followingIds.has(u.id);
-            return (
-              <div
-                key={u.id}
-                className="aura-card rounded-2xl border border-white/5 p-4 flex items-center gap-3"
-              >
-                <Avatar
-                  username={u.username}
-                  avatarUrl={u.avatarUrl}
-                  avatarColor={u.avatarColor}
-                  isVerified={u.isVerified}
-                  size="md"
-                  onClick={() => viewProfile(u.username)}
-                />
-                <div className="min-w-0 flex-1">
-                  <button
-                    onClick={() => viewProfile(u.username)}
-                    className="flex items-center gap-1 font-semibold hover:underline truncate"
-                  >
-                    <span className="truncate">{u.username}</span>
-                    {u.isVerified && (
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 verified-badge shrink-0">
-                        <path fill="oklch(0.78 0.2 60)" d="M12 1.5l2.4 1.8 3 .1 1 2.8 2.4 1.8-1 2.8 1 2.8-2.4 1.8-1 2.8-3 .1L12 22.5l-2.4-1.8-3-.1-1-2.8L3.2 16l1-2.8-1-2.8 2.4-1.8 1-2.8 3-.1L12 1.5z" />
-                        <path fill="oklch(0.13 0.02 290)" d="M10.6 14.6l-2.3-2.3 1.4-1.4 1 1 3.2-3.2 1.4 1.4-4.7 4.5z" />
-                      </svg>
-                    )}
-                  </button>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {u.followerCount ? `${formatNumber(u.followerCount)} followers` : "New here"} · {u.postCount ?? 0} posts
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant={isFollowing ? "secondary" : "default"}
-                  onClick={() => follow(u)}
-                  className={isFollowing ? "" : "aura-gradient-bg text-white hover:opacity-90"}
-                >
-                  {isFollowing ? <Check className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-                </Button>
-              </div>
-            );
-          })}
+      {/* Quick hashtag chips */}
+      {!hasSearch && (
+        <div className="flex flex-wrap gap-2">
+          {["#fitness", "#earnings", "#car", "#goal", "#business", "#travel"].map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setQuery(tag)}
+              className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/10 transition"
+            >
+              <Hash className="h-3 w-3" /> {tag.slice(1)}
+            </button>
+          ))}
         </div>
       )}
+
+      {/* SEARCH RESULTS */}
+      {showResults ? (
+        searching && !searchResults ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : searchResults!.posts.length === 0 && searchResults!.users.length === 0 ? (
+          <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+            <div className="text-4xl mb-2">🔍</div>
+            <p className="text-sm text-muted-foreground">
+              No results for &ldquo;{query}&rdquo;. Try a different keyword or hashtag.
+            </p>
+          </div>
+        ) : (
+          <Tabs defaultValue={searchResults!.users.length > 0 ? "users" : "posts"}>
+            <TabsList className="grid w-full grid-cols-2 mb-3">
+              <TabsTrigger value="users">
+                People <span className="ml-1 text-xs text-muted-foreground">({searchResults!.users.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="posts">
+                Posts <span className="ml-1 text-xs text-muted-foreground">({searchResults!.posts.length})</span>
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="users" className="space-y-2">
+              {searchResults!.users.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No users match.</p>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {searchResults!.users.map((u) => (
+                    <UserCard
+                      key={u.id}
+                      u={u}
+                      isFollowing={followingIds.has(u.id)}
+                      onFollow={() => follow(u)}
+                      onClick={() => viewProfile(u.username)}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="posts" className="space-y-3">
+              {searchResults!.posts.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No posts match.</p>
+              ) : (
+                searchResults!.posts.map((p) => <PostCard key={p.id} post={p} />)
+              )}
+            </TabsContent>
+          </Tabs>
+        )
+      ) : (
+        /* SUGGESTED USERS (default, no search) */
+        <>
+          <h2 className="px-1 text-sm font-semibold text-muted-foreground">Suggested for you</h2>
+          {loadingSug ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : suggested.length === 0 ? (
+            <div className="aura-card rounded-2xl border border-white/5 p-10 text-center text-sm text-muted-foreground">
+              You&rsquo;re following everyone. Nice network! 🎉
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-3">
+              {suggested.map((u) => (
+                <UserCard
+                  key={u.id}
+                  u={u}
+                  isFollowing={followingIds.has(u.id)}
+                  onFollow={() => follow(u)}
+                  onClick={() => viewProfile(u.username)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function UserCard({
+  u,
+  isFollowing,
+  onFollow,
+  onClick,
+}: {
+  u: AuraUser;
+  isFollowing: boolean;
+  onFollow: () => void;
+  onClick: () => void;
+}) {
+  const cat = u.bio ? null : null;
+  return (
+    <div className="aura-card rounded-2xl border border-white/5 p-4 flex items-center gap-3">
+      <Avatar
+        username={u.username}
+        avatarUrl={u.avatarUrl}
+        avatarColor={u.avatarColor}
+        isVerified={u.isVerified}
+        size="md"
+        onClick={onClick}
+      />
+      <div className="min-w-0 flex-1">
+        <button
+          onClick={onClick}
+          className="flex items-center gap-1 font-semibold hover:underline truncate"
+        >
+          <span className="truncate">{u.username}</span>
+          {u.isVerified && (
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 verified-badge shrink-0">
+              <path fill="oklch(0.78 0.2 60)" d="M12 1.5l2.4 1.8 3 .1 1 2.8 2.4 1.8-1 2.8 1 2.8-2.4 1.8-1 2.8-3 .1L12 22.5l-2.4-1.8-3-.1-1-2.8L3.2 16l1-2.8-1-2.8 2.4-1.8 1-2.8 3-.1L12 1.5z" />
+              <path fill="oklch(0.13 0.02 290)" d="M10.6 14.6l-2.3-2.3 1.4-1.4 1 1 3.2-3.2 1.4 1.4-4.7 4.5z" />
+            </svg>
+          )}
+        </button>
+        <p className="text-xs text-muted-foreground truncate">
+          {u.followerCount ? `${formatNumber(u.followerCount)} followers` : "New here"} · {u.postCount ?? 0} posts
+        </p>
+        {u.bio && <p className="text-xs text-muted-foreground/80 truncate mt-0.5">{u.bio}</p>}
+      </div>
+      <Button
+        size="sm"
+        variant={isFollowing ? "secondary" : "default"}
+        onClick={onFollow}
+        className={isFollowing ? "" : "aura-gradient-bg text-white hover:opacity-90"}
+      >
+        {isFollowing ? <Check className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+      </Button>
     </div>
   );
 }

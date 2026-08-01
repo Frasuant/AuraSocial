@@ -55,10 +55,11 @@ export function AdminPanel() {
       <DbStatusBanner />
 
       <Tabs defaultValue="dashboard">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5">
           <TabsTrigger value="dashboard"><BarChart3 className="h-4 w-4 mr-1.5" />Stats</TabsTrigger>
           <TabsTrigger value="users"><UsersIcon className="h-4 w-4 mr-1.5" />Users</TabsTrigger>
-          <TabsTrigger value="queue"><Flag className="h-4 w-4 mr-1.5" />Queue</TabsTrigger>
+          <TabsTrigger value="queue"><Flag className="h-4 w-4 mr-1.5" />AI Queue</TabsTrigger>
+          <TabsTrigger value="reports"><AlertTriangle className="h-4 w-4 mr-1.5" />Reports</TabsTrigger>
           <TabsTrigger value="settings"><KeyRound className="h-4 w-4 mr-1.5" />Settings</TabsTrigger>
         </TabsList>
 
@@ -70,6 +71,9 @@ export function AdminPanel() {
         </TabsContent>
         <TabsContent value="queue" className="mt-4">
           <QueueTab />
+        </TabsContent>
+        <TabsContent value="reports" className="mt-4">
+          <ReportsTab />
         </TabsContent>
         <TabsContent value="settings" className="mt-4">
           <SettingsTab />
@@ -522,6 +526,114 @@ function DbStatusBanner() {
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+function ReportsTab() {
+  const { toast } = useToast();
+  const [reports, setReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    aura
+      .adminReports()
+      .then((r) => setReports(r.reports))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const act = async (postId: string, action: "published" | "removed") => {
+    setBusy(postId);
+    try {
+      await aura.adminSetPostStatus(postId, action);
+      setReports((list) => list.filter((r) => r.post.id !== postId));
+      toast({
+        title: action === "published" ? "Cleared & restored ✅" : "Removed 🗑",
+        description: action === "published" ? "Post is back in the feed." : "Post taken down.",
+      });
+    } catch (e: any) {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-200/90">
+        <b className="text-amber-300">Community reports.</b> Posts flagged by users (3+ reports
+        auto-hide). Review and decide: restore or remove.
+      </div>
+      {reports.length === 0 ? (
+        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+          <div className="text-4xl mb-2">🤝</div>
+          <p className="text-sm text-muted-foreground">No community reports. Clean community!</p>
+        </div>
+      ) : (
+        reports.map((r) => {
+          const cat = categoryMeta(r.post.category);
+          return (
+            <div key={r.post.id} className="aura-card rounded-2xl border border-white/5 p-4">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <Avatar
+                  username={r.post.author.username}
+                  avatarUrl={r.post.author.avatarUrl}
+                  avatarColor={r.post.author.avatarColor}
+                  isVerified={r.post.author.isVerified}
+                  size="sm"
+                />
+                <span className="font-semibold text-sm">{r.post.author.username}</span>
+                <span className="text-xs text-muted-foreground">· {timeAgo(r.post.createdAt)}</span>
+                <span className={cn("ml-auto inline-flex items-center gap-1 rounded-full bg-gradient-to-r px-2 py-0.5 text-xs text-white/90", cat.color)}>
+                  {cat.emoji} {cat.label}
+                </span>
+              </div>
+              <p className="text-sm whitespace-pre-wrap break-words mb-2">{r.post.caption}</p>
+              <div className="flex items-center gap-2 flex-wrap mb-3">
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2.5 py-1 text-xs font-medium text-rose-300 ring-1 ring-rose-500/30">
+                  <AlertTriangle className="h-3 w-3" /> {r.reportCount} report{r.reportCount > 1 ? "s" : ""}
+                </span>
+                {Object.entries(r.reasons).map(([reason, count]: [string, any]) => (
+                  <span key={reason} className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-muted-foreground">
+                    {reason} ×{count}
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => act(r.post.id, "published")}
+                  disabled={busy === r.post.id}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Check className="h-4 w-4 mr-1" /> Clear & restore
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => act(r.post.id, "removed")}
+                  disabled={busy === r.post.id}
+                >
+                  <X className="h-4 w-4 mr-1" /> Remove post
+                </Button>
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { Loader2, Sparkles, TrendingUp } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { POST_CATEGORIES } from "@/lib/constants";
@@ -54,6 +55,16 @@ export function Feed() {
 
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 space-y-4">
+      {/* Page heading */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 text-emerald-400" /> The Feed
+          </h1>
+          <p className="text-sm text-muted-foreground">Real wins from real grinders.</p>
+        </div>
+      </div>
+
       {/* Compose */}
       <button
         onClick={() => setCreateOpen(true)}
@@ -127,8 +138,15 @@ export function Feed() {
         </div>
       ) : (
         <div className="space-y-4">
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} />
+          {posts.map((p, i) => (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: Math.min(i * 0.05, 0.25) }}
+            >
+              <PostCard post={p} />
+            </motion.div>
           ))}
           {hasMore && (
             <div className="flex justify-center py-4">

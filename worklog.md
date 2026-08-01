@@ -136,3 +136,74 @@ Stage Summary:
 Next-phase recommendations:
 - The /tmp SQLite bootstrap makes the app browseable on Vercel but signups don't persist across cold starts — strongly recommend Turso (documented in admin-only Deploy Guide).
 - Consider adding a "first-run admin password setup" flow so the owner sets their own password on first deploy (instead of the seeded default).
+
+---
+
+## Task ID: 4 (webDevReview — features + bug fix + polish)
+Agent: webDevReview (cron)
+Task: QA the app, fix bugs, add new features (profile editing, report post, notifications, search), improve styling.
+
+### Current project status (assessment)
+- App was stable from Phase 3 (login, feed, posts, likes, comments, follow, AI moderation, admin console all working).
+- QA via agent-browser confirmed no security leaks, login works, feed renders, no runtime errors.
+- Found UX bug: Profile "Log out" button showed a Settings (gear) icon — confusing. Fixed by splitting into "Edit profile" + separate "Log out" button.
+
+### Completed modifications
+
+**Bug fix:**
+- `Notification` model was missing the `actor` relation — `include: { actor: ... }` in `/api/notifications` caused a 500 error. Fixed by adding `actor User @relation("NotificationActor", ...)` to the schema + `sentNotifications Notification[] @relation("NotificationActor")` on User. Re-pushed schema + regenerated seed.db. Verified: `/api/notifications` now returns `{"notifications":[],"unreadCount":0}` with no errors.
+
+**New features:**
+1. **Profile editing** (`EditProfileDialog` + `PUT /api/users/me`):
+   - Edit bio (max 200 chars), pick avatar gradient color (8 options), upload profile photo.
+   - Live preview avatar in dialog. Saves to DB + updates Zustand user state immediately.
+   - Fixed UX bug: "Edit profile" button replaces the confusing "Settings/Log out" button on own profile; separate "Log out" button added.
+
+2. **Report post** (`PostCard` dropdown menu + `POST /api/posts/[id]/report`):
+   - "More" (⋯) button on other users' posts → dropdown → "Report post" → dialog with 7 reasons (spam, scam, harassment, hate, explicit, illegal, other).
+   - Idempotent (same user can't report twice). **Auto-escalation**: 3+ reports auto-flag the post (status→flagged, risk 50+N*10).
+   - New `Report` Prisma model with `@@unique([postId, reporterId])`.
+
+3. **Notifications** (`NotificationsView` + `GET /api/notifications` + `POST /api/notifications/read`):
+   - Bell icon in header with unread count badge (polls every 30s).
+   - Shows likes ❤️, comments 💬, follows 👤 with actor avatar + timestamp.
+   - "Mark all read" button. Unread items highlighted with amber border + dot.
+   - Notifications auto-created on like/comment/follow (non-self only, non-fatal).
+   - framer-motion staggered entrance animation.
+
+4. **Search** (`GET /api/search` + ExploreView upgrade):
+   - Debounced search (350ms) across posts (by caption) AND users (by username).
+   - Hashtag support: `#earnings` strips the `#` and searches captions.
+   - Quick hashtag chips: #fitness, #earnings, #car, #goal, #business, #travel.
+   - Tabs: People / Posts with counts. Falls back to "Suggested for you" when no query.
+
+5. **Admin Reports tab** (`ReportsTab` in AdminPanel + `GET /api/admin/reports`):
+   - New 5th tab "Reports" showing community-flagged posts grouped by post.
+   - Shows report count, reason breakdown (e.g. "spam ×2, scam ×1"), reporter info.
+   - Actions: "Clear & restore" (publish) or "Remove post" (removed status).
+
+**Styling polish:**
+- framer-motion entrance animations on feed posts (staggered fade+slide).
+- Heart like button: scale pop animation on like (1→1.4→1).
+- Feed page heading: "The Feed" with TrendingUp icon + "Real wins from real grinders." subtitle.
+- Tabular-nums on like/comment counts for stable width.
+- Version bumped to v1.1 in sidebar footer.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- agent-browser E2E: login ✓, feed heading ✓, notifications bell ✓, notifications view ("All quiet for now") ✓, profile "Edit profile" button ✓, follow (count 0→1) ✓, explore search + hashtags ✓.
+- API tests (curl): report post ✓ (idempotent ✓), admin reports ✓, search "marco" → 1 user ✓, search "#earnings" → 1 post ✓, notifications API `{"notifications":[],"unreadCount":0}` ✓.
+- Dev log: zero prisma errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation, not an app bug). Worked around by running all tests in single bash sessions.
+- VLM visual check timed out — accessibility snapshots used instead (confirmed structure).
+- The `/tmp` SQLite fallback on Vercel still doesn't persist signups across cold starts — Turso is the recommended fix (documented in admin-only Deploy Guide).
+
+### Priority recommendations for next phase
+- Add follower/following list views (clickable stat counts on profile).
+- Add "trending posts" / "top flexes of the week" algorithm.
+- Add direct messages between users.
+- Add rate limiting on auth + post creation + report endpoints.
+- Add post deletion by the author (currently only admin can delete).
+- Consider email verification on signup.

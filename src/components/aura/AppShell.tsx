@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Home,
   Compass,
@@ -9,6 +10,7 @@ import {
   Rocket,
   LogOut,
   Flame,
+  Bell,
 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -18,7 +20,9 @@ import { Feed } from "./Feed";
 import { ExploreView } from "./ExploreView";
 import { ProfileView } from "./ProfileView";
 import { AdminPanel } from "./AdminPanel";
+import { NotificationsView } from "./NotificationsView";
 import { CreatePostDialog } from "./CreatePostDialog";
+import { EditProfileDialog } from "./EditProfileDialog";
 import { useToast } from "@/hooks/use-toast";
 
 export function AppShell() {
@@ -30,8 +34,24 @@ export function AppShell() {
     viewProfile,
     setCreateOpen,
     setDeployOpen,
+    unreadCount,
+    setUnreadCount,
   } = useApp();
   const { toast } = useToast();
+
+  // Poll for unread notification count every 30s
+  useEffect(() => {
+    if (!user) return;
+    const poll = () => {
+      aura
+        .notifications()
+        .then((r) => setUnreadCount(r.unreadCount))
+        .catch(() => {});
+    };
+    poll();
+    const id = setInterval(poll, 30000);
+    return () => clearInterval(id);
+  }, [user, setUnreadCount]);
 
   const logout = async () => {
     await aura.logout();
@@ -44,6 +64,13 @@ export function AppShell() {
     { id: "feed" as const, label: "Home", icon: Home },
     { id: "explore" as const, label: "Explore", icon: Compass },
     { id: "create" as const, label: "Create", icon: PlusCircle, action: () => setCreateOpen(true) },
+    {
+      id: "notifications" as const,
+      label: "Alerts",
+      icon: Bell,
+      badge: unreadCount,
+      action: () => setView("notifications"),
+    },
     { id: "profile" as const, label: "Profile", icon: UserIcon, action: () => user && viewProfile(user.username) },
   ];
 
@@ -57,10 +84,7 @@ export function AppShell() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-white/5 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-3 sm:px-4">
-          <button
-            onClick={() => setView("feed")}
-            className="flex items-center gap-2"
-          >
+          <button onClick={() => setView("feed")} className="flex items-center gap-2">
             <div className="aura-gradient-bg h-8 w-8 rounded-xl flex items-center justify-center aura-glow">
               <Flame className="h-4.5 w-4.5 text-white" />
             </div>
@@ -70,6 +94,25 @@ export function AppShell() {
           </button>
 
           <div className="flex-1" />
+
+          {/* Notifications bell */}
+          <button
+            onClick={() => setView("notifications")}
+            className={cn(
+              "relative rounded-full p-2 transition",
+              view === "notifications"
+                ? "bg-white/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+            )}
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[10px] font-bold text-white flex items-center justify-center ring-2 ring-background">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
 
           {user?.isAdmin && (
             <button
@@ -85,10 +128,7 @@ export function AppShell() {
             </button>
           )}
 
-          <button
-            onClick={() => user && viewProfile(user.username)}
-            className="shrink-0"
-          >
+          <button onClick={() => user && viewProfile(user.username)} className="shrink-0">
             <Avatar
               username={user?.username || "?"}
               avatarUrl={user?.avatarUrl}
@@ -110,7 +150,7 @@ export function AppShell() {
                 key={item.id}
                 onClick={() => go(item)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition relative",
                   view === item.id
                     ? "bg-white/10 text-foreground"
                     : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
@@ -118,6 +158,11 @@ export function AppShell() {
               >
                 <item.icon className="h-5 w-5" />
                 {item.label}
+                {item.badge && item.badge > 0 ? (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[10px] font-bold text-white flex items-center justify-center">
+                    {item.badge > 9 ? "9+" : item.badge}
+                  </span>
+                ) : null}
               </button>
             ))}
             {user?.isAdmin && (
@@ -154,7 +199,7 @@ export function AppShell() {
               Log out
             </button>
             <p className="px-3 text-[10px] text-muted-foreground/60">
-              AuraMedia · v1.0 · AuraGuard AI active
+              AuraMedia · v1.1 · AuraGuard AI active
             </p>
           </div>
         </aside>
@@ -163,6 +208,7 @@ export function AppShell() {
         <main className="flex-1 min-w-0 pb-20 md:pb-4">
           {view === "feed" && <Feed />}
           {view === "explore" && <ExploreView />}
+          {view === "notifications" && <NotificationsView />}
           {view === "profile" && <ProfileView />}
           {view === "admin" && user?.isAdmin && <AdminPanel />}
           {view === "admin" && !user?.isAdmin && (
@@ -176,17 +222,24 @@ export function AppShell() {
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/5 bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
         <div className="flex h-16">
-          {navItems.map((item) => (
+          {navItems.slice(0, 4).map((item) => (
             <button
               key={item.id}
               onClick={() => go(item)}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition",
-                view === item.id ? "text-foreground" : "text-muted-foreground"
-              )}
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition relative"
+              style={{ color: view === item.id ? "var(--foreground)" : undefined }}
             >
-              <item.icon className="h-5 w-5" />
-              {item.label}
+              <span className={view === item.id ? "text-foreground" : "text-muted-foreground"}>
+                <item.icon className="h-5 w-5" />
+              </span>
+              <span className={view === item.id ? "text-foreground" : "text-muted-foreground"}>
+                {item.label}
+              </span>
+              {item.badge && item.badge > 0 ? (
+                <span className="absolute top-1 right-1/4 min-w-[14px] h-3.5 px-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[9px] font-bold text-white flex items-center justify-center">
+                  {item.badge > 9 ? "9+" : item.badge}
+                </span>
+              ) : null}
             </button>
           ))}
           {user?.isAdmin && (
@@ -201,10 +254,28 @@ export function AppShell() {
               Admin
             </button>
           )}
+          <button
+            onClick={() => user && viewProfile(user.username)}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition",
+              view === "profile" ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
+            <Avatar
+              username={user?.username || "?"}
+              avatarUrl={user?.avatarUrl}
+              avatarColor={user?.avatarColor}
+              isVerified={user?.isVerified}
+              size="xs"
+              showBadge={false}
+            />
+            Me
+          </button>
         </div>
       </nav>
 
       <CreatePostDialog />
+      <EditProfileDialog />
     </div>
   );
 }

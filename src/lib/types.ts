@@ -60,4 +60,6 @@ export type ViewName =
   | "profile"
   | "create"
   | "admin"
-  | "deploy";
+  | "deploy"
+  | "notifications"
+  | "search";

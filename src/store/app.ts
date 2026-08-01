@@ -16,8 +16,19 @@ interface AppState {
   createOpen: boolean;
   setCreateOpen: (v: boolean) => void;
 
+  editProfileOpen: boolean;
+  setEditProfileOpen: (v: boolean) => void;
+
   deployOpen: boolean;
   setDeployOpen: (v: boolean) => void;
+
+  // Search
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+
+  // Notifications
+  unreadCount: number;
+  setUnreadCount: (n: number) => void;
 
   feedKey: number;
   bumpFeed: () => void;
@@ -36,8 +47,17 @@ export const useApp = create<AppState>((set) => ({
   createOpen: false,
   setCreateOpen: (v) => set({ createOpen: v }),
 
+  editProfileOpen: false,
+  setEditProfileOpen: (v) => set({ editProfileOpen: v }),
+
   deployOpen: false,
   setDeployOpen: (v) => set({ deployOpen: v }),
+
+  searchQuery: "",
+  setSearchQuery: (q) => set({ searchQuery: q }),
+
+  unreadCount: 0,
+  setUnreadCount: (n) => set({ unreadCount: n }),
 
   feedKey: 0,
   bumpFeed: () => set((s) => ({ feedKey: s.feedKey + 1 })),

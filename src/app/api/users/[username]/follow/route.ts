@@ -32,6 +32,16 @@ export async function POST(
     await db.follow.create({
       data: { followerId: me.id, followingId: target.id },
     });
+
+    // Notify the followed user
+    await db.notification.create({
+      data: {
+        userId: target.id,
+        actorId: me.id,
+        type: "follow",
+      },
+    }).catch(() => {});
+
     return NextResponse.json({ following: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Server error" }, { status: 500 });

@@ -22,11 +22,14 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  posts     Post[]
-  likes     Like[]
-  comments  Comment[]
-  following Follow[] @relation("FollowFollower")
-  followers Follow[] @relation("FollowFollowing")
+  posts         Post[]
+  likes         Like[]
+  comments      Comment[]
+  following     Follow[]      @relation("FollowFollower")
+  followers     Follow[]      @relation("FollowFollowing")
+  notifications Notification[]
+  sentNotifications Notification[] @relation("NotificationActor")
+  reports       Report[]      @relation("ReportReporter")
 }
 
 model Post {
@@ -41,9 +44,10 @@ model Post {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  likes    Like[]
+  author  User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes   Like[]
   comments Comment[]
+  reports Report[]
 }
 
 model Like {
@@ -79,4 +83,32 @@ model Follow {
   following User @relation("FollowFollowing", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  actorId   String
+  type      String
+  postId    String?
+  content   String   @default("")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actor User @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  postId    String
+  reporterId String
+  reason    String
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+
+  post     Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter User @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, reporterId])
 }

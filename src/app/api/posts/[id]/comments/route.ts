@@ -58,6 +58,20 @@ export async function POST(
         },
       },
     });
+
+    // Notify the post author
+    const post = await db.post.findUnique({ where: { id }, select: { authorId: true } });
+    if (post && post.authorId !== me.id) {
+      await db.notification.create({
+        data: {
+          userId: post.authorId,
+          actorId: me.id,
+          type: "comment",
+          postId: id,
+          content: content.slice(0, 120),
+        },
+      }).catch(() => {});
+    }
     return NextResponse.json({ comment });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Server error" }, { status: 500 });
