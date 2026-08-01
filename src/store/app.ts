@@ -13,6 +13,10 @@ interface AppState {
   profileUsername: string | null;
   viewProfile: (username: string) => void;
 
+  // Post detail view — which post is open
+  postDetailId: string | null;
+  viewPostDetail: (postId: string) => void;
+
   // For followers/following list views — whose list are we viewing
   listUsername: string | null;
   viewFollowers: (username: string) => void;
@@ -55,6 +59,9 @@ export const useApp = create<AppState>((set) => ({
 
   profileUsername: null,
   viewProfile: (username) => set({ view: "profile", profileUsername: username }),
+
+  postDetailId: null,
+  viewPostDetail: (postId) => set({ view: "postDetail", postDetailId: postId }),
 
   listUsername: null,
   viewFollowers: (username) => set({ view: "followers", listUsername: username }),

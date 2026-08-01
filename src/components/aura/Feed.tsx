@@ -56,19 +56,27 @@ export function Feed() {
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 space-y-4">
       {/* Page heading */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-emerald-400" /> The Feed
           </h1>
           <p className="text-sm text-muted-foreground">Real wins from real grinders.</p>
         </div>
-        <button
-          onClick={() => setView("trending")}
-          className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-300 hover:bg-orange-500/15 transition"
-        >
-          <Flame className="h-3.5 w-3.5" /> Trending
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => setView("discovery")}
+            className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-300 hover:bg-violet-500/15 transition"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> Discover
+          </button>
+          <button
+            onClick={() => setView("trending")}
+            className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-300 hover:bg-orange-500/15 transition"
+          >
+            <Flame className="h-3.5 w-3.5" /> Trending
+          </button>
+        </div>
       </div>
 
       {/* Compose */}

@@ -13,6 +13,7 @@ import {
   Bell,
   TrendingUp,
   Bookmark,
+  Sparkles,
 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -26,6 +27,8 @@ import { NotificationsView } from "./NotificationsView";
 import { TrendingView } from "./TrendingView";
 import { BookmarksView } from "./BookmarksView";
 import { FollowListView } from "./FollowListView";
+import { DiscoveryView } from "./DiscoveryView";
+import { PostDetailView } from "./PostDetailView";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { EditPostDialog } from "./EditPostDialog";
 import { EditProfileDialog } from "./EditProfileDialog";
@@ -68,6 +71,7 @@ export function AppShell() {
 
   const navItems = [
     { id: "feed" as const, label: "Home", icon: Home },
+    { id: "discovery" as const, label: "Discover", icon: Sparkles },
     { id: "trending" as const, label: "Trending", icon: TrendingUp },
     { id: "explore" as const, label: "Explore", icon: Compass },
     { id: "create" as const, label: "Create", icon: PlusCircle, action: () => setCreateOpen(true) },
@@ -207,7 +211,7 @@ export function AppShell() {
               Log out
             </button>
             <p className="px-3 text-[10px] text-muted-foreground/60">
-              AuraMedia · v1.2 · AuraGuard AI active
+              AuraMedia · v1.4 · AuraGuard AI active
             </p>
           </div>
         </aside>
@@ -215,9 +219,11 @@ export function AppShell() {
         {/* Main content */}
         <main className="flex-1 min-w-0 pb-20 md:pb-4">
           {view === "feed" && <Feed />}
+          {view === "discovery" && <DiscoveryView />}
           {view === "trending" && <TrendingView />}
           {view === "explore" && <ExploreView />}
           {view === "bookmarks" && <BookmarksView />}
+          {view === "postDetail" && <PostDetailView />}
           {view === "notifications" && <NotificationsView />}
           {view === "followers" && <FollowListView mode="followers" />}
           {view === "following" && <FollowListView mode="following" />}
@@ -236,8 +242,8 @@ export function AppShell() {
         <div className="flex h-16">
           {/* Home */}
           <MobileNavBtn item={navItems[0]} view={view} go={go} />
-          {/* Explore */}
-          <MobileNavBtn item={navItems[2]} view={view} go={go} />
+          {/* Discover */}
+          <MobileNavBtn item={navItems[1]} view={view} go={go} />
           {/* Create (center, emphasized) */}
           <button
             onClick={() => setCreateOpen(true)}
@@ -248,9 +254,9 @@ export function AppShell() {
             </div>
           </button>
           {/* Bookmarks */}
-          <MobileNavBtn item={navItems[4]} view={view} go={go} />
-          {/* Notifications */}
           <MobileNavBtn item={navItems[5]} view={view} go={go} />
+          {/* Notifications */}
+          <MobileNavBtn item={navItems[6]} view={view} go={go} />
         </div>
       </nav>
 

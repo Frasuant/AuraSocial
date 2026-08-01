@@ -55,6 +55,17 @@ export const aura = {
     api<{ posts: Post[] }>("/api/bookmarks"),
   trending: () =>
     api<{ posts: Post[] }>("/api/trending"),
+  discovery: () =>
+    api<{ posts: Post[] }>("/api/discovery"),
+  postDetail: (postId: string) =>
+    api<{ post: Post & { bookmarkCount: number; repostCount: number; repostOf: any } }>(`/api/posts/${postId}`),
+  repost: (postId: string, quote?: string) =>
+    api<{ ok: boolean; repostId: string }>(`/api/posts/${postId}/repost`, {
+      method: "POST",
+      body: JSON.stringify({ quote: quote || "" }),
+    }),
+  unrepost: (postId: string) =>
+    api<{ ok: boolean }>(`/api/posts/${postId}/repost`, { method: "DELETE" }),
   userLikes: (username: string) =>
     api<{ posts: Post[] }>(`/api/users/${username}/likes`),
   comments: (postId: string) =>

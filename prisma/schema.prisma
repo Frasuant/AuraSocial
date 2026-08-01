@@ -42,14 +42,17 @@ model Post {
   status         String   @default("published")
   moderationNote String   @default("")
   moderationRisk Int      @default(0)
+  repostOfId     String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  author  User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  likes   Like[]
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes    Like[]
   comments Comment[]
-  reports Report[]
+  reports  Report[]
   bookmarks Bookmark[]
+  repostOf Post?     @relation("Repost", fields: [repostOfId], references: [id], onDelete: SetNull)
+  reposts  Post[]    @relation("Repost")
 }
 
 model Like {

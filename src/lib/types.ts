@@ -68,4 +68,6 @@ export type ViewName =
   | "trending"
   | "bookmarks"
   | "followers"
-  | "following";
+  | "following"
+  | "discovery"
+  | "postDetail";

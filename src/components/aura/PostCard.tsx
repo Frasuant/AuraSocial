@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal, Bookmark, BookmarkCheck, Pencil } from "lucide-react";
+import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal, Bookmark, BookmarkCheck, Pencil, Repeat2 } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { categoryMeta } from "@/lib/constants";
 import { aura } from "@/lib/api";
@@ -47,8 +47,8 @@ const REPORT_REASONS = [
   { value: "other", label: "Something else", emoji: "❓" },
 ];
 
-export function PostCard({ post }: { post: Post }) {
-  const { user, viewProfile, bumpFeed, openEditPost } = useApp();
+export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) {
+  const { user, viewProfile, bumpFeed, openEditPost, viewPostDetail } = useApp();
   const { toast } = useToast();
   const [liked, setLiked] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -65,6 +65,8 @@ export function PostCard({ post }: { post: Post }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
+  const [reposted, setReposted] = useState(false);
+  const [repostBusy, setRepostBusy] = useState(false);
   const cat = categoryMeta(post.category);
 
   const isOwnPost = user && post.author && user.id === post.author.id;
@@ -126,6 +128,34 @@ export function PostCard({ post }: { post: Post }) {
       toast({ title: "Couldn't save", description: e.message, variant: "destructive" });
     } finally {
       setBookmarkBusy(false);
+    }
+  };
+
+  const toggleRepost = async () => {
+    if (!user) {
+      toast({ title: "Log in to repost", variant: "destructive" });
+      return;
+    }
+    if (isOwnPost) {
+      toast({ title: "Can't repost your own post", variant: "destructive" });
+      return;
+    }
+    setRepostBusy(true);
+    try {
+      if (reposted) {
+        await aura.unrepost(post.id);
+        setReposted(false);
+        toast({ title: "Repost removed" });
+      } else {
+        await aura.repost(post.id);
+        setReposted(true);
+        toast({ title: "Reposted 🔁", description: "Shared to your followers." });
+        bumpFeed();
+      }
+    } catch (e: any) {
+      toast({ title: "Couldn't repost", description: e.message, variant: "destructive" });
+    } finally {
+      setRepostBusy(false);
     }
   };
 
@@ -261,8 +291,11 @@ export function PostCard({ post }: { post: Post }) {
         </div>
       )}
 
-      {/* Caption */}
-      <div className="px-4 pt-3">
+      {/* Caption — clickable to open post detail */}
+      <div
+        className="px-4 pt-3 cursor-pointer"
+        onClick={() => (onOpen ? onOpen() : viewPostDetail(post.id))}
+      >
         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
           {post.caption}
         </p>
@@ -303,6 +336,29 @@ export function PostCard({ post }: { post: Post }) {
         >
           <Share2 className="h-5 w-5" />
         </button>
+        {user && !isOwnPost && (
+          <button
+            onClick={toggleRepost}
+            disabled={repostBusy}
+            className={cn(
+              "flex items-center gap-2 rounded-full px-3 py-2 text-sm transition active:scale-95",
+              reposted
+                ? "text-emerald-400"
+                : "text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10"
+            )}
+            title={reposted ? "Reposted" : "Repost"}
+          >
+            <motion.span
+              key={reposted ? "reposted" : "not"}
+              initial={reposted ? { scale: [1, 1.3, 1] } : false}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.25 }}
+              className="inline-flex"
+            >
+              <Repeat2 className={cn("h-5 w-5 transition", reposted && "fill-emerald-500/30")} />
+            </motion.span>
+          </button>
+        )}
         {user && (
           <button
             onClick={toggleBookmark}

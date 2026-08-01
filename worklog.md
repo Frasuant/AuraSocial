@@ -361,3 +361,80 @@ Task: QA the app, add post editing, liked posts view, rate limiting, improve pro
 - Add a "discovery" feed (posts from people 2 hops away in the follow graph).
 - Swap in-memory rate limiter for Upstash Redis for multi-instance production.
 - Add post detail view (clicking a post opens a focused full-page view with all comments).
+
+---
+
+## Task ID: 7 (webDevReview — post detail, repost, discovery feed, polish)
+Agent: webDevReview (cron)
+Task: QA the app, add post detail view, repost feature, discovery feed, improve styling.
+
+### Current project status (assessment)
+- App was stable at v1.3 (all previous features working: feed, trending, bookmarks, notifications, search, profile editing, report post, post deletion, post editing, liked posts, rate limiting, followers/following lists).
+- QA via curl: all endpoints return 200, zero errors. 4 users, 6 posts, 1 flagged, 2 verified.
+- No bugs found — proceeded to add new features per next-phase recommendations.
+
+### Completed modifications
+
+**Schema change:**
+- Added `repostOfId String?` to Post model + self-relation `repostOf Post? @relation("Repost")` / `reposts Post[] @relation("Repost")` with `onDelete: SetNull`. Re-pushed schema + regenerated seed.db.
+
+**New features (3):**
+
+1. **Post detail view** (`GET /api/posts/[id]` + `PostDetailView`):
+   - Clicking any post caption opens a focused detail page.
+   - Shows the full post (via PostCard), extra stats grid (Likes/Reposts/Saves), all comments (loaded inline), and a comment composer (Cmd/Ctrl+Enter to submit).
+   - If the post is a repost, shows a green "Reposted from @user" banner + the original post in a quoted block.
+   - "Back to feed" navigation.
+   - Store additions: `postDetailId`, `viewPostDetail()`.
+   - PostCard now accepts an optional `onOpen` prop and the caption div is clickable (`cursor-pointer`).
+
+2. **Repost / quote feature** (`POST/DELETE /api/posts/[id]/repost`):
+   - Users can repost (re-share) any non-own published post.
+   - Optional quote comment (max 500 chars) stored as the repost's caption.
+   - One repost per original per user (enforced — duplicate returns 409 with existing repostId).
+   - Can un-repost (DELETE removes the user's repost).
+   - Reposts skip AI moderation (the original was already moderated) — status="published".
+   - Notifies the original author (type "repost").
+   - Rate limited: 15 reposts/min.
+   - New `Repeat2` button in PostCard action bar (emerald theme, scale-pop animation) — hidden on own posts.
+   - New `/api/posts/[id]` GET endpoint returns full detail: author, counts (likes/comments/bookmarks/reposts), likedByMe/bookmarkedByMe, repostOf (nested original post with author).
+
+3. **Discovery feed** (`GET /api/discovery` + `DiscoveryView`):
+   - Posts from people you follow + posts they've liked (2-hop discovery signal).
+   - Merged, deduped, capped at 25.
+   - Falls back to recent posts if you follow no one; returns recent posts for logged-out users.
+   - New "Discover" nav item (Sparkles icon, violet gradient header) in sidebar + mobile nav.
+   - "Discover" quick-link pill button on the Feed page header (violet theme, alongside Trending).
+   - Skeleton loaders + friendly empty state ("🧭 Follow some grinders to see their posts and what they're hyping up.").
+
+**Styling polish:**
+- Feed header now has two quick-link pills: Discover (violet) + Trending (orange).
+- PostCard repost button: emerald Repeat2 icon with scale-pop animation on repost, fill when active.
+- PostDetailView: motion entrance, green repost banner, quoted original post block with left border accent, 3-column stats grid (Likes/Reposts/Saves).
+- DiscoveryView: violet/fuchsia gradient icon header, staggered framer-motion post entrance.
+- Version bumped to v1.4.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- API tests (curl):
+  - post detail ✓ (returns author, caption, likes=0, comments=0, reposts=0, saves=1, repostOf=null),
+  - repost ✓ (creates repost, returns repostId),
+  - duplicate repost ✓ (409 "You already reposted this." + existing repostId),
+  - unrepost ✓ ({"ok":true}),
+  - discovery ✓ (5 posts returned).
+- agent-browser E2E: login ✓, feed shows "Discover" + "Trending" pills ✓, Discovery view renders ("Posts from people you follow + flexes they've hyped.") ✓, feed posts with captions visible ✓.
+- Dev log: zero errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation). Worked around with warmup + single-session tests. The post detail view click-to-open was tested via API (confirmed data) + the caption onClick handler is wired (viewPostDetail). 
+- In-memory rate limiter is per-process — for multi-instance production (Vercel), swap with Redis/Upstash.
+- The `/tmp` SQLite fallback on Vercel still doesn't persist — Turso remains the recommended fix.
+
+### Priority recommendations for next phase
+- Add direct messages (DM) between users (real-time via WebSocket mini-service).
+- Add email verification on signup.
+- Add a "quotes" view (posts that reposted/quoted a given post).
+- Add infinite scroll to discovery + trending views.
+- Add post image carousel (multiple images per post).
+- Add user mentions (@username) in captions with linkification.
+- Add hashtag autocomplete in search.
