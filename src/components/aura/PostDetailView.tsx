@@ -7,6 +7,7 @@ import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
 import { PostCard } from "./PostCard";
+import { RichText } from "./RichText";
 import { Avatar } from "./Avatar";
 import { categoryMeta } from "@/lib/constants";
 import { cn, timeAgo } from "@/lib/utils";
@@ -15,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 export function PostDetailView() {
-  const { postDetailId, setView, viewProfile } = useApp();
+  const { postDetailId, setView, viewProfile, setSearchQuery } = useApp();
   const { toast } = useToast();
   const [post, setPost] = useState<(Post & { bookmarkCount: number; repostCount: number; repostOf: any }) | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -136,7 +137,13 @@ export function PostDetailView() {
                 {cat.emoji} {cat.label}
               </span>
             </div>
-            <p className="text-sm whitespace-pre-wrap break-words">{post.repostOf.caption}</p>
+            <p className="text-sm whitespace-pre-wrap break-words">
+              <RichText
+                text={post.repostOf.caption}
+                onMention={(username) => viewProfile(username)}
+                onHashtag={(tag) => { setSearchQuery(`#${tag}`); setView("explore"); }}
+              />
+            </p>
             {post.repostOf.imageUrl && (
               <div className="mt-2 rounded-xl overflow-hidden">
                 <img src={post.repostOf.imageUrl} alt="" className="w-full max-h-60 object-cover" />
@@ -193,7 +200,13 @@ export function PostDetailView() {
                 </button>
                 <span className="text-xs text-muted-foreground">· {timeAgo(c.createdAt)}</span>
               </div>
-              <p className="text-sm mt-0.5 whitespace-pre-wrap break-words">{c.content}</p>
+              <p className="text-sm mt-0.5 whitespace-pre-wrap break-words">
+                <RichText
+                  text={c.content}
+                  onMention={(username) => viewProfile(username)}
+                  onHashtag={(tag) => { setSearchQuery(`#${tag}`); setView("explore"); }}
+                />
+              </p>
             </div>
           </div>
         ))}

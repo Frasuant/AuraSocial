@@ -438,3 +438,70 @@ Task: QA the app, add post detail view, repost feature, discovery feed, improve 
 - Add post image carousel (multiple images per post).
 - Add user mentions (@username) in captions with linkification.
 - Add hashtag autocomplete in search.
+
+---
+
+## Task ID: 8 (webDevReview — @mentions, #hashtag autocomplete, rich text)
+Agent: webDevReview (cron)
+Task: QA the app, add @username mentions linkification, hashtag autocomplete in search, rich text rendering.
+
+### Current project status (assessment)
+- App was stable at v1.4 (all previous features working: feed, discovery, trending, bookmarks, notifications, search, profile editing, report post, post deletion/editing, liked posts, rate limiting, followers/following lists, post detail view, repost feature).
+- QA via curl: all endpoints return 200, zero errors. 4 users, 7 posts, 1 flagged, 2 verified.
+- No bugs found — proceeded to add new features per next-phase recommendations.
+
+### Completed modifications
+
+**New features (3):**
+
+1. **Rich text rendering** (`src/components/aura/RichText.tsx`):
+   - `@mentions` in captions/comments are linkified → violet clickable pills that navigate to the user's profile.
+   - `#hashtags` are linkified → sky-blue clickable pills that trigger a search for that hashtag.
+   - Regex split: `/(@[a-zA-Z0-9_]+|#[a-zA-Z0-9_]+)/g` — keeps delimiters, renders text/mention/hashtag segments.
+   - `stopPropagation` on click so the parent caption's "open detail" handler doesn't fire.
+   - Integrated into: PostCard caption + comments, PostDetailView original post caption + comments.
+
+2. **Hashtag autocomplete** (`GET /api/hashtags` + ExploreView dropdown):
+   - New endpoint extracts all `#hashtags` from published post captions (up to 1000 posts), counts frequency, returns top 10 matching a prefix.
+   - In ExploreView, when the user types `#` + at least 1 char, a debounced (200ms) autocomplete dropdown appears below the search input.
+   - Dropdown shows hashtag name (sky-blue) + post count, clickable to fill the search.
+   - Glassmorphism popover styling (`bg-popover/95 backdrop-blur-xl`), "HASHTAGS" header, z-30 layering.
+   - `onMouseDown` (not onClick) to fire before the input's `onBlur` hides the dropdown.
+
+3. **Infinite scroll on Feed** (already existed, verified working) + **search-triggered hashtag navigation**:
+   - Clicking a `#hashtag` in any caption sets `searchQuery` to `#tag` and navigates to Explore, auto-running the search.
+   - Clicking a `@mention` navigates directly to that user's profile.
+
+**Files changed:**
+- `src/components/aura/RichText.tsx` (new) — linkified text renderer.
+- `src/app/api/hashtags/route.ts` (new) — hashtag autocomplete endpoint.
+- `src/lib/api.ts` — added `hashtags()` method.
+- `src/components/aura/PostCard.tsx` — caption + comments now use RichText; added `setView`/`setSearchQuery` for hashtag/mention navigation.
+- `src/components/aura/PostDetailView.tsx` — original post caption + comments now use RichText.
+- `src/components/aura/ExploreView.tsx` — added hashtag autocomplete dropdown with debounced suggestions.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- API tests (curl):
+  - Created a post with `#fitness #gains` + `@MarcoFlex` → post created successfully.
+  - hashtags (no prefix) → `[('fitness', 1), ('gains', 1)]` ✓.
+  - hashtags `#fit` → `[('fitness', 1)]` ✓ (prefix match).
+  - hashtags `#g` → `[('gains', 1)]` ✓.
+  - search "bench" → 1 post ✓.
+- agent-browser E2E: login ✓, feed shows `#fitness` + `#gains` as clickable buttons in the caption ✓, Explore search typing `#f` shows autocomplete dropdown with "HASHTAGS" header + "#fitness 1 post" ✓.
+- Dev log: zero errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation). Worked around with warmup + single-session tests.
+- In-memory rate limiter is per-process — for multi-instance production (Vercel), swap with Redis/Upstash.
+- The `/tmp` SQLite fallback on Vercel still doesn't persist — Turso remains the recommended fix.
+- Hashtag extraction scans up to 1000 posts on every autocomplete request — fine for now, but should be cached or indexed for large-scale.
+
+### Priority recommendations for next phase
+- Add direct messages (DM) between users (real-time via WebSocket mini-service).
+- Add email verification on signup.
+- Add post image carousel (multiple images per post).
+- Add a "quotes" view (posts that reposted/quoted a given post).
+- Cache hashtag counts (invalidate on post create/delete).
+- Add user search by bio (not just username).
+- Add a "suggest hashtags" feature in the CreatePostDialog.

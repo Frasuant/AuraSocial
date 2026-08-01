@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal, Bookmark, BookmarkCheck, Pencil, Repeat2 } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { RichText } from "./RichText";
 import { categoryMeta } from "@/lib/constants";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -48,7 +49,7 @@ const REPORT_REASONS = [
 ];
 
 export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) {
-  const { user, viewProfile, bumpFeed, openEditPost, viewPostDetail } = useApp();
+  const { user, viewProfile, bumpFeed, openEditPost, viewPostDetail, setView, setSearchQuery } = useApp();
   const { toast } = useToast();
   const [liked, setLiked] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -291,13 +292,20 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
         </div>
       )}
 
-      {/* Caption — clickable to open post detail */}
+      {/* Caption — clickable to open post detail, with @mentions + #hashtags linkified */}
       <div
         className="px-4 pt-3 cursor-pointer"
         onClick={() => (onOpen ? onOpen() : viewPostDetail(post.id))}
       >
         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-          {post.caption}
+          <RichText
+            text={post.caption}
+            onMention={(username) => viewProfile(username)}
+            onHashtag={(tag) => {
+              setSearchQuery(`#${tag}`);
+              setView("explore");
+            }}
+          />
         </p>
       </div>
 
@@ -450,7 +458,16 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
                   >
                     {c.user.username}
                   </button>
-                  <span className="text-sm">{c.content}</span>
+                  <span className="text-sm">
+                    <RichText
+                      text={c.content}
+                      onMention={(username) => viewProfile(username)}
+                      onHashtag={(tag) => {
+                        setSearchQuery(`#${tag}`);
+                        setView("explore");
+                      }}
+                    />
+                  </span>
                 </div>
                 <span className="ml-3 text-xs text-muted-foreground">{timeAgo(c.createdAt)}</span>
               </div>

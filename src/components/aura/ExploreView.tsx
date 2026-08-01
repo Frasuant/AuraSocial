@@ -23,7 +23,10 @@ export function ExploreView() {
   const [searchResults, setSearchResults] = useState<{ posts: Post[]; users: AuraUser[] } | null>(null);
   const [searching, setSearching] = useState(false);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [hashtagSuggestions, setHashtagSuggestions] = useState<{ tag: string; count: number }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hashtagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     aura
@@ -57,6 +60,34 @@ export function ExploreView() {
     };
   }, [query, toast]);
 
+  // hashtag autocomplete — when the query starts with #, fetch suggestions
+  useEffect(() => {
+    if (hashtagDebounceRef.current) clearTimeout(hashtagDebounceRef.current);
+    const q = query.trim();
+    if (!q.startsWith("#")) {
+      setHashtagSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    if (q.length < 2) {
+      setHashtagSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    hashtagDebounceRef.current = setTimeout(async () => {
+      try {
+        const r = await aura.hashtags(q);
+        setHashtagSuggestions(r.tags);
+        setShowSuggestions(r.tags.length > 0);
+      } catch {
+        // ignore
+      }
+    }, 200);
+    return () => {
+      if (hashtagDebounceRef.current) clearTimeout(hashtagDebounceRef.current);
+    };
+  }, [query]);
+
   const follow = async (u: AuraUser) => {
     try {
       const r = await aura.follow(u.username);
@@ -82,20 +113,50 @@ export function ExploreView() {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => query.startsWith("#") && hashtagSuggestions.length > 0 && setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="Search by username, caption, or #hashtag…"
           className="pl-9 pr-9 bg-white/5 border-white/10"
         />
         {query && (
           <button
             onClick={() => setQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10"
           >
             <X className="h-4 w-4" />
           </button>
+        )}
+
+        {/* Hashtag autocomplete dropdown */}
+        {showSuggestions && hashtagSuggestions.length > 0 && (
+          <div className="absolute z-30 top-full left-0 right-0 mt-1 rounded-xl border border-white/10 bg-popover/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
+            <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-white/5">
+              Hashtags
+            </p>
+            {hashtagSuggestions.map((s) => (
+              <button
+                key={s.tag}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setQuery(`#${s.tag}`);
+                  setShowSuggestions(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition text-left"
+              >
+                <span className="h-7 w-7 rounded-lg bg-sky-500/15 flex items-center justify-center">
+                  <Hash className="h-3.5 w-3.5 text-sky-300" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-sky-300">#{s.tag}</span>
+                </span>
+                <span className="text-xs text-muted-foreground">{s.count} post{s.count !== 1 ? "s" : ""}</span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 

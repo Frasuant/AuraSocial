@@ -126,6 +126,8 @@ export const aura = {
   // Search
   search: (q: string) =>
     api<{ posts: Post[]; users: AuraUser[] }>(`/api/search?q=${encodeURIComponent(q)}`),
+  hashtags: (q: string) =>
+    api<{ tags: { tag: string; count: number }[] }>(`/api/hashtags?q=${encodeURIComponent(q)}`),
 
   // Admin
   adminUsers: () => api<{ users: AuraUser[] }>("/api/admin/users"),
