@@ -35,7 +35,12 @@ export async function GET(req: Request) {
         },
       }),
       db.user.findMany({
-        where: { username: { contains: query } },
+        where: {
+          OR: [
+            { username: { contains: query } },
+            { bio: { contains: query } },
+          ],
+        },
         take: 10,
         select: {
           id: true,

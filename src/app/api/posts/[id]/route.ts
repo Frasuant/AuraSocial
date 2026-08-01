@@ -47,11 +47,22 @@ export async function GET(
     if (!post)
       return NextResponse.json({ error: "Post not found." }, { status: 404 });
 
+    // Parse images
+    let images: string[] = [];
+    try {
+      const parsed = JSON.parse(post.images || "[]");
+      if (Array.isArray(parsed)) images = parsed.filter(Boolean);
+    } catch {
+      images = [];
+    }
+    if (images.length === 0 && post.imageUrl) images = [post.imageUrl];
+
     return NextResponse.json({
       post: {
         id: post.id,
         caption: post.caption,
         imageUrl: post.imageUrl,
+        images,
         category: post.category,
         status: post.status,
         moderationNote: post.moderationNote,

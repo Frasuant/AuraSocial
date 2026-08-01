@@ -5,10 +5,21 @@ import { moderateContent } from "@/lib/moderation";
 import { rateLimit } from "@/lib/rate-limit";
 
 function formatPost(post: any, meId: string | null) {
+  // Parse images JSON string; fall back to [imageUrl] for backward compat
+  let images: string[] = [];
+  try {
+    const parsed = JSON.parse(post.images || "[]");
+    if (Array.isArray(parsed)) images = parsed.filter(Boolean);
+  } catch {
+    images = [];
+  }
+  if (images.length === 0 && post.imageUrl) images = [post.imageUrl];
+
   return {
     id: post.id,
     caption: post.caption,
     imageUrl: post.imageUrl,
+    images,
     category: post.category,
     status: post.status,
     moderationNote: post.moderationNote,
@@ -87,6 +98,13 @@ export async function POST(req: Request) {
     const caption = String(body.caption || "").trim();
     const category = String(body.category || "flex");
     const imageUrl = String(body.imageUrl || "").trim();
+    // images: array of URLs (carousel). imageUrl is kept for backward compat (first image).
+    const imagesRaw = Array.isArray(body.images) ? body.images : [];
+    const images = imagesRaw
+      .map((s: any) => String(s || "").trim())
+      .filter(Boolean)
+      .slice(0, 6); // max 6 images
+    const primaryImage = imageUrl || (images.length > 0 ? images[0] : "");
 
     if (!caption)
       return NextResponse.json({ error: "Write a caption first." }, { status: 400 });
@@ -102,7 +120,8 @@ export async function POST(req: Request) {
         authorId: me.id,
         caption,
         category,
-        imageUrl,
+        imageUrl: primaryImage,
+        images: JSON.stringify(images),
         status,
         moderationNote: verdict.note,
         moderationRisk: verdict.risk,

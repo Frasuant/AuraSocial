@@ -38,6 +38,7 @@ model Post {
   authorId       String
   caption        String
   imageUrl       String   @default("")
+  images         String   @default("[]")
   category       String   @default("flex")
   status         String   @default("published")
   moderationNote String   @default("")

@@ -28,6 +28,7 @@ export interface Post {
   id: string;
   caption: string;
   imageUrl: string;
+  images?: string[];
   category: string;
   status: string;
   moderationNote: string;

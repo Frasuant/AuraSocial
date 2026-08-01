@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal, Bookmark, BookmarkCheck, Pencil, Repeat2 } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { RichText } from "./RichText";
+import { PostImageCarousel } from "./PostImageCarousel";
 import { categoryMeta } from "@/lib/constants";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -284,13 +285,11 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
         )}
       </div>
 
-      {/* Image */}
-      {post.imageUrl && (
-        <div className={cn("relative aspect-[4/3] w-full bg-gradient-to-br", cat.color)}>
-          <img src={post.imageUrl} alt="" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-        </div>
-      )}
+      {/* Image(s) — carousel if multiple */}
+      <PostImageCarousel
+        images={post.images && post.images.length > 0 ? post.images : post.imageUrl ? [post.imageUrl] : []}
+        fallbackColor={cat.color}
+      />
 
       {/* Caption — clickable to open post detail, with @mentions + #hashtags linkified */}
       <div

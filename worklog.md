@@ -505,3 +505,78 @@ Task: QA the app, add @username mentions linkification, hashtag autocomplete in 
 - Cache hashtag counts (invalidate on post create/delete).
 - Add user search by bio (not just username).
 - Add a "suggest hashtags" feature in the CreatePostDialog.
+
+---
+
+## Task ID: 9 (webDevReview — image carousel, hashtag suggestions, bio search)
+Agent: webDevReview (cron)
+Task: QA the app, add post image carousel, hashtag suggestions in CreatePostDialog, user search by bio.
+
+### Current project status (assessment)
+- App was stable at v1.5 (all previous features working: feed, discovery, trending, bookmarks, notifications, search, profile editing, report post, post deletion/editing, liked posts, rate limiting, followers/following lists, post detail view, repost feature, @mentions, #hashtag autocomplete).
+- QA via curl: all endpoints return 200, zero errors. 4 users, 8 posts, 1 flagged, 2 verified.
+- No bugs found — proceeded to add new features per next-phase recommendations.
+
+### Completed modifications
+
+**Schema change:**
+- Added `images String @default("[]")` to Post model (JSON string array of image URLs, max 6). `imageUrl` kept for backward compat (first image / cover). Re-pushed schema + regenerated seed.db.
+
+**New features (3):**
+
+1. **Post image carousel** (`PostImageCarousel` component + multi-image API):
+   - Posts can now have up to 6 images.
+   - CreatePostDialog: grid of image thumbnails with "Cover" badge on the first, remove button on hover, "Add" tile to upload more.
+   - PostCard: renders `PostImageCarousel` — single image shows as before; multiple images show a carousel with:
+     - Prev/next chevron arrows (only shown when navigable)
+     - Dot indicators (clickable, active dot is wider)
+     - "1/6" counter badge top-right
+     - framer-motion slide animation between images (AnimatePresence)
+   - Post detail API + create API updated to parse/serialize the `images` JSON field.
+   - `formatPost` in posts route parses `images` JSON, falls back to `[imageUrl]` for backward compat.
+
+2. **Hashtag suggestions in CreatePostDialog**:
+   - While typing a caption, when the cursor is right after a `#partial` word, a debounced (200ms) dropdown appears ABOVE the textarea with suggested hashtags.
+   - Suggestions are fetched from `/api/hashtags?q=#partial`, filtered to exclude tags already in the caption.
+   - Clicking a suggestion replaces the `#partial` with `#tag ` (with trailing space) and refocuses the textarea at the correct cursor position.
+   - Glassmorphism popover styling, "SUGGESTED HASHTAGS" header, sky-blue hashtag pills with post counts.
+   - `onMouseDown` (not onClick) to fire before the textarea's `onBlur`.
+
+3. **User search by bio** (search API enhancement):
+   - `/api/search` now searches users by BOTH username AND bio (OR clause).
+   - Verified: searching "SaaS" finds MarcoFlex (whose bio contains "Sold my first SaaS for 7 figures").
+
+**Files changed:**
+- `prisma/schema.prisma` — added `images` field to Post.
+- `src/app/api/posts/route.ts` — createPost accepts `images[]`; formatPost parses images JSON.
+- `src/app/api/posts/[id]/route.ts` — postDetail returns `images` array.
+- `src/app/api/search/route.ts` — user search now matches username OR bio.
+- `src/lib/api.ts` — `createPost` accepts `images?: string[]`.
+- `src/lib/types.ts` — Post interface includes `images?: string[]`.
+- `src/components/aura/PostImageCarousel.tsx` (new) — carousel with arrows, dots, counter, slide animation.
+- `src/components/aura/CreatePostDialog.tsx` — multi-image upload grid + hashtag suggestions dropdown.
+- `src/components/aura/PostCard.tsx` — uses PostImageCarousel instead of single image.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- API tests (curl):
+  - create post with 2 images → returns `images: ['/uploads/test1.jpg', '/uploads/test2.jpg']`, `imageUrl: '/uploads/test1.jpg'` (cover) ✓.
+  - search "SaaS" → 1 user found: MarcoFlex ✓ (bio match).
+  - hashtags `#fit` → `[('fitness', 1)]` ✓, `#f` → `[('fitness', 1), ('flex', 1)]` ✓.
+- agent-browser E2E: login ✓, feed shows multi-image post with "1/2" carousel counter ✓, Create dialog opens with "New Flex" + "Add photos (up to 6)" ✓, textarea accepts hashtag input ✓.
+- Dev log: zero errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation). Worked around with warmup + single-session tests.
+- In-memory rate limiter is per-process — for multi-instance production (Vercel), swap with Redis/Upstash.
+- The `/tmp` SQLite fallback on Vercel still doesn't persist — Turso remains the recommended fix.
+- Hashtag suggestion dropdown in CreatePostDialog requires the cursor to be right after `#partial` — if the user moves the cursor away it won't show (by design).
+
+### Priority recommendations for next phase
+- Add direct messages (DM) between users (real-time via WebSocket mini-service).
+- Add email verification on signup.
+- Add a "quotes" view (posts that reposted/quoted a given post).
+- Add post editing support for images (currently edit only changes caption/category).
+- Cache hashtag counts (invalidate on post create/delete).
+- Add image alt text for accessibility.
+- Add a "drafts" feature (save posts without publishing).

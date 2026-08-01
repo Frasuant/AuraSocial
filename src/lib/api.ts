@@ -35,7 +35,7 @@ export const aura = {
     if (params.cursor) q.set("cursor", params.cursor);
     return api<{ posts: Post[]; nextCursor: string | null }>(`/api/posts?${q}`);
   },
-  createPost: (body: { caption: string; category: string; imageUrl?: string }) =>
+  createPost: (body: { caption: string; category: string; imageUrl?: string; images?: string[] }) =>
     api<{ post: Post; moderation: ModerationResult }>("/api/posts", {
       method: "POST",
       body: JSON.stringify(body),

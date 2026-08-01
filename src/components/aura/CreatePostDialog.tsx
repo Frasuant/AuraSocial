@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ImagePlus, Loader2, ShieldAlert, ShieldCheck, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ImagePlus, Loader2, ShieldCheck, X, Hash } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
@@ -18,19 +18,27 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { ModerationResult } from "@/lib/types";
 
+const MAX_IMAGES = 6;
+
 export function CreatePostDialog() {
-  const { createOpen, setCreateOpen, user, setView, bumpFeed } = useApp();
+  const { createOpen, setCreateOpen, user, bumpFeed } = useApp();
   const { toast } = useToast();
   const [caption, setCaption] = useState("");
   const [category, setCategory] = useState("flex");
-  const [imageUrl, setImageUrl] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [hashtagSuggestions, setHashtagSuggestions] = useState<{ tag: string; count: number }[]>([]);
+  const [showHashtagSuggestions, setShowHashtagSuggestions] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const hashtagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reset = () => {
     setCaption("");
     setCategory("flex");
-    setImageUrl("");
+    setImages([]);
+    setHashtagSuggestions([]);
+    setShowHashtagSuggestions(false);
   };
 
   const close = () => {
@@ -38,11 +46,22 @@ export function CreatePostDialog() {
     reset();
   };
 
+  // Sync state when opening
+  useEffect(() => {
+    if (createOpen) {
+      reset();
+    }
+  }, [createOpen]);
+
   const onUpload = async (file: File) => {
+    if (images.length >= MAX_IMAGES) {
+      toast({ title: `Max ${MAX_IMAGES} images`, variant: "destructive" });
+      return;
+    }
     setUploading(true);
     try {
       const r = await aura.upload(file);
-      setImageUrl(r.url);
+      setImages((prev) => [...prev, r.url]);
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
     } finally {
@@ -50,11 +69,72 @@ export function CreatePostDialog() {
     }
   };
 
+  const removeImage = (idx: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Hashtag suggestions: detect when the cursor is right after a #word
+  useEffect(() => {
+    if (hashtagDebounceRef.current) clearTimeout(hashtagDebounceRef.current);
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const cursor = textarea.selectionStart;
+    const text = caption.slice(0, cursor);
+    // Find a #hashtag being typed (no space after)
+    const match = text.match(/#([a-zA-Z0-9_]*)$/);
+    if (!match || match[1].length < 1) {
+      setHashtagSuggestions([]);
+      setShowHashtagSuggestions(false);
+      return;
+    }
+    const prefix = match[1];
+    hashtagDebounceRef.current = setTimeout(async () => {
+      try {
+        const r = await aura.hashtags(`#${prefix}`);
+        // Filter out tags already in the caption
+        const existing = new Set(
+          (caption.match(/#([a-zA-Z0-9_]+)/g) || []).map((t) => t.slice(1).toLowerCase())
+        );
+        const filtered = r.tags.filter((t) => !existing.has(t.tag.toLowerCase()));
+        setHashtagSuggestions(filtered.slice(0, 5));
+        setShowHashtagSuggestions(filtered.length > 0);
+      } catch {
+        // ignore
+      }
+    }, 200);
+    return () => {
+      if (hashtagDebounceRef.current) clearTimeout(hashtagDebounceRef.current);
+    };
+  }, [caption]);
+
+  const insertHashtag = (tag: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const cursor = textarea.selectionStart;
+    const text = caption.slice(0, cursor);
+    const after = caption.slice(cursor);
+    // Replace the #partial at the end with #tag + space
+    const newText = text.replace(/#([a-zA-Z0-9_]*)$/, `#${tag} `) + after;
+    setCaption(newText);
+    setShowHashtagSuggestions(false);
+    // Refocus and move cursor
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = text.replace(/#([a-zA-Z0-9_]*)$/, `#${tag} `).length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  };
+
   const submit = async () => {
     if (!caption.trim() || posting) return;
     setPosting(true);
     try {
-      const r = await aura.createPost({ caption: caption.trim(), category, imageUrl });
+      const r = await aura.createPost({
+        caption: caption.trim(),
+        category,
+        images,
+        imageUrl: images[0] || "",
+      });
       const m: ModerationResult = r.moderation;
       if (m.approved) {
         toast({
@@ -113,30 +193,94 @@ export function CreatePostDialog() {
             </div>
           </div>
 
-          {/* Caption */}
-          <div>
+          {/* Caption + hashtag suggestions */}
+          <div className="relative">
             <Textarea
+              ref={textareaRef}
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder={`What are you flexing today, ${user?.username}?`}
+              onBlur={() => setTimeout(() => setShowHashtagSuggestions(false), 150)}
+              placeholder={`What are you flexing today, ${user?.username}? Use #hashtags to get discovered.`}
               className="min-h-[120px] resize-none bg-white/5 border-white/10"
               maxLength={2000}
             />
             <div className="mt-1 text-right text-xs text-muted-foreground">
               {caption.length}/2000
             </div>
+
+            {/* Hashtag suggestions dropdown */}
+            {showHashtagSuggestions && hashtagSuggestions.length > 0 && (
+              <div className="absolute z-30 bottom-full left-0 right-0 mb-1 rounded-xl border border-white/10 bg-popover/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
+                <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-white/5">
+                  Suggested hashtags
+                </p>
+                {hashtagSuggestions.map((s) => (
+                  <button
+                    key={s.tag}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      insertHashtag(s.tag);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition text-left"
+                  >
+                    <span className="h-7 w-7 rounded-lg bg-sky-500/15 flex items-center justify-center">
+                      <Hash className="h-3.5 w-3.5 text-sky-300" />
+                    </span>
+                    <span className="text-sm font-medium text-sky-300 flex-1">#{s.tag}</span>
+                    <span className="text-xs text-muted-foreground">{s.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Image */}
-          {imageUrl ? (
-            <div className="relative rounded-xl overflow-hidden border border-white/10">
-              <img src={imageUrl} alt="" className="w-full max-h-72 object-cover" />
-              <button
-                onClick={() => setImageUrl("")}
-                className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 hover:bg-black/80"
-              >
-                <X className="h-4 w-4" />
-              </button>
+          {/* Images (carousel) */}
+          {images.length > 0 ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((url, idx) => (
+                  <div
+                    key={idx}
+                    className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group"
+                  >
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <button
+                      onClick={() => removeImage(idx)}
+                      className="absolute top-1 right-1 rounded-full bg-black/60 p-1 hover:bg-black/80 opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    {idx === 0 && (
+                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                        Cover
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <label className="aspect-square rounded-xl border border-dashed border-white/15 bg-white/5 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/10 transition">
+                    {uploading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <span className="text-[10px] text-muted-foreground">Add</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) onUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                {images.length}/{MAX_IMAGES} photos · first image is the cover
+              </p>
             </div>
           ) : (
             <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/5 py-8 cursor-pointer hover:bg-white/10 transition">
@@ -146,7 +290,7 @@ export function CreatePostDialog() {
                 <ImagePlus className="h-6 w-6 text-muted-foreground" />
               )}
               <span className="text-sm text-muted-foreground">
-                {uploading ? "Uploading…" : "Add a photo (optional)"}
+                {uploading ? "Uploading…" : "Add photos (up to 6)"}
               </span>
               <input
                 type="file"
@@ -155,6 +299,7 @@ export function CreatePostDialog() {
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) onUpload(f);
+                  e.target.value = "";
                 }}
               />
             </label>
