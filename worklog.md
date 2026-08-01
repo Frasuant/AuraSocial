@@ -207,3 +207,81 @@ Task: QA the app, fix bugs, add new features (profile editing, report post, noti
 - Add rate limiting on auth + post creation + report endpoints.
 - Add post deletion by the author (currently only admin can delete).
 - Consider email verification on signup.
+
+---
+
+## Task ID: 5 (webDevReview — bookmarks, trending, post delete, follow lists, polish)
+Agent: webDevReview (cron)
+Task: QA the app, add new features (post deletion, bookmarks, trending, followers/following lists), improve styling.
+
+### Current project status (assessment)
+- App was stable at v1.1 (login, feed, posts, likes, comments, follow, AI moderation, admin console, notifications, search, profile editing, report post all working).
+- QA via curl API health checks: all endpoints return 200, zero errors. 4 users, 6 posts, 1 flagged.
+- No bugs found — proceeded to add new features per next-phase recommendations.
+
+### Completed modifications
+
+**New Prisma model:**
+- `Bookmark` (id, postId, userId, createdAt) with `@@unique([postId, userId])` — for save/bookmark feature.
+- Added `bookmarks Bookmark[]` relation to both User and Post models.
+- Re-pushed schema + regenerated seed.db.
+
+**New features (5):**
+
+1. **Post deletion by author** (`DELETE /api/posts/[id]/delete` + PostCard dropdown):
+   - Authors can delete their own posts; admins can delete any post.
+   - AlertDialog confirmation ("Delete this post? This permanently removes your flex…").
+   - Optimistic removal: post fades out with framer-motion exit animation, feed refreshes.
+   - Dropdown menu now context-aware: shows "Delete post" (rose) for own posts, "Report post" (amber) for others'.
+
+2. **Bookmark / Save posts** (`POST /api/posts/[id]/bookmark` + `GET /api/bookmarks`):
+   - Bookmark button (🔖) in PostCard action bar with scale-pop animation on save.
+   - Saved posts turn amber; unsaved returns to muted.
+   - New "Saved" view (`BookmarksView`) showing all bookmarked posts, sorted by save date.
+   - "Saved" in sidebar nav + mobile bottom nav.
+
+3. **Trending posts** (`GET /api/trending` + `TrendingView`):
+   - Ranking algorithm: `score = likes*3 + comments*2 + bookmarks*2`, posts from last 7 days.
+   - Top 10 ranked. Top 3 get a gold "#1/#2/#3" trophy badge.
+   - New "Trending" view with flame/orange gradient header, staggered framer-motion entrance.
+   - "Trending" in sidebar nav + quick-link button on the Feed page header.
+   - Skeleton loaders while fetching.
+
+4. **Followers / Following list views** (`GET /api/users/[username]/followers` + `/following` + `FollowListView`):
+   - Profile stat counts (Followers, Following) are now clickable buttons.
+   - Opens a dedicated list view with user cards (avatar, username, follower/post counts, follow button).
+   - Reusable `FollowListView` component handles both modes.
+   - "Back to @username" navigation.
+   - Precomputes which users the current user already follows.
+
+5. **Mobile nav redesign**:
+   - Bottom nav now has 5 slots: Home, Explore, **Create (center, emphasized with gradient pill)**, Saved, Notifications.
+   - Create button is a prominent gradient rounded-square in the center.
+   - Reusable `MobileNavBtn` helper component.
+
+**Styling polish:**
+- PostCard: now a `motion.article` with `layout` + fade/slide entrance + hover border highlight.
+- Bookmark button: scale-pop animation (1→1.3→1) on save, like the heart.
+- Trending rank badges: gold gradient pill with trophy icon for top 3.
+- Feed header: added "Trending" quick-link pill button (orange theme).
+- All new views have consistent gradient-icon headers + skeleton/empty states.
+- Version bumped to v1.2.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- API tests (curl): trending ✓ (returns ranked posts), bookmarks ✓ (empty→toggle→saved), bookmark toggle ✓ (`{"bookmarked":true}`), followers(Admin) ✓ (empty), following(Admin) ✓ (returns MarcoFlex).
+- agent-browser E2E: login ✓, feed "The Feed" + "Trending" link ✓, Trending view ("Top flexes from the last 7 days" + #1/#2 badges) ✓, Saved view ("Posts you've bookmarked for later") ✓, profile stats clickable ("0 Followers" / "1 Following" as buttons) ✓.
+- Dev log: zero errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation). Worked around with single-session tests + warmup.
+- VLM visual check timed out — accessibility snapshots confirmed structure instead.
+- The `/tmp` SQLite fallback on Vercel still doesn't persist — Turso remains the recommended fix.
+
+### Priority recommendations for next phase
+- Add direct messages (DM) between users (real-time via WebSocket mini-service).
+- Add "repost" / "quote" feature.
+- Add rate limiting on auth + post creation + report endpoints.
+- Add email verification on signup.
+- Add post editing (currently only delete).
+- Consider a "discovery" algorithm (posts from people 2 hops away in the follow graph).

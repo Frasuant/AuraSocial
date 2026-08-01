@@ -25,6 +25,7 @@ model User {
   posts         Post[]
   likes         Like[]
   comments      Comment[]
+  bookmarks     Bookmark[]
   following     Follow[]      @relation("FollowFollower")
   followers     Follow[]      @relation("FollowFollowing")
   notifications Notification[]
@@ -48,6 +49,7 @@ model Post {
   likes   Like[]
   comments Comment[]
   reports Report[]
+  bookmarks Bookmark[]
 }
 
 model Like {
@@ -111,4 +113,16 @@ model Report {
   reporter User @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
 
   @@unique([postId, reporterId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
 }

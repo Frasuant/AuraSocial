@@ -11,6 +11,8 @@ import {
   LogOut,
   Flame,
   Bell,
+  TrendingUp,
+  Bookmark,
 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -21,6 +23,9 @@ import { ExploreView } from "./ExploreView";
 import { ProfileView } from "./ProfileView";
 import { AdminPanel } from "./AdminPanel";
 import { NotificationsView } from "./NotificationsView";
+import { TrendingView } from "./TrendingView";
+import { BookmarksView } from "./BookmarksView";
+import { FollowListView } from "./FollowListView";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -62,8 +67,10 @@ export function AppShell() {
 
   const navItems = [
     { id: "feed" as const, label: "Home", icon: Home },
+    { id: "trending" as const, label: "Trending", icon: TrendingUp },
     { id: "explore" as const, label: "Explore", icon: Compass },
     { id: "create" as const, label: "Create", icon: PlusCircle, action: () => setCreateOpen(true) },
+    { id: "bookmarks" as const, label: "Saved", icon: Bookmark },
     {
       id: "notifications" as const,
       label: "Alerts",
@@ -199,7 +206,7 @@ export function AppShell() {
               Log out
             </button>
             <p className="px-3 text-[10px] text-muted-foreground/60">
-              AuraMedia · v1.1 · AuraGuard AI active
+              AuraMedia · v1.2 · AuraGuard AI active
             </p>
           </div>
         </aside>
@@ -207,8 +214,12 @@ export function AppShell() {
         {/* Main content */}
         <main className="flex-1 min-w-0 pb-20 md:pb-4">
           {view === "feed" && <Feed />}
+          {view === "trending" && <TrendingView />}
           {view === "explore" && <ExploreView />}
+          {view === "bookmarks" && <BookmarksView />}
           {view === "notifications" && <NotificationsView />}
+          {view === "followers" && <FollowListView mode="followers" />}
+          {view === "following" && <FollowListView mode="following" />}
           {view === "profile" && <ProfileView />}
           {view === "admin" && user?.isAdmin && <AdminPanel />}
           {view === "admin" && !user?.isAdmin && (
@@ -219,63 +230,60 @@ export function AppShell() {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav — 5 core actions */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/5 bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
         <div className="flex h-16">
-          {navItems.slice(0, 4).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => go(item)}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition relative"
-              style={{ color: view === item.id ? "var(--foreground)" : undefined }}
-            >
-              <span className={view === item.id ? "text-foreground" : "text-muted-foreground"}>
-                <item.icon className="h-5 w-5" />
-              </span>
-              <span className={view === item.id ? "text-foreground" : "text-muted-foreground"}>
-                {item.label}
-              </span>
-              {item.badge && item.badge > 0 ? (
-                <span className="absolute top-1 right-1/4 min-w-[14px] h-3.5 px-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[9px] font-bold text-white flex items-center justify-center">
-                  {item.badge > 9 ? "9+" : item.badge}
-                </span>
-              ) : null}
-            </button>
-          ))}
-          {user?.isAdmin && (
-            <button
-              onClick={() => setView("admin")}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition",
-                view === "admin" ? "text-amber-300" : "text-muted-foreground"
-              )}
-            >
-              <ShieldCheck className="h-5 w-5" />
-              Admin
-            </button>
-          )}
+          {/* Home */}
+          <MobileNavBtn item={navItems[0]} view={view} go={go} />
+          {/* Explore */}
+          <MobileNavBtn item={navItems[2]} view={view} go={go} />
+          {/* Create (center, emphasized) */}
           <button
-            onClick={() => user && viewProfile(user.username)}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition",
-              view === "profile" ? "text-foreground" : "text-muted-foreground"
-            )}
+            onClick={() => setCreateOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5"
           >
-            <Avatar
-              username={user?.username || "?"}
-              avatarUrl={user?.avatarUrl}
-              avatarColor={user?.avatarColor}
-              isVerified={user?.isVerified}
-              size="xs"
-              showBadge={false}
-            />
-            Me
+            <div className="aura-gradient-bg h-9 w-9 rounded-xl flex items-center justify-center aura-glow">
+              <PlusCircle className="h-5 w-5 text-white" />
+            </div>
           </button>
+          {/* Bookmarks */}
+          <MobileNavBtn item={navItems[4]} view={view} go={go} />
+          {/* Notifications */}
+          <MobileNavBtn item={navItems[5]} view={view} go={go} />
         </div>
       </nav>
 
       <CreatePostDialog />
       <EditProfileDialog />
     </div>
+  );
+}
+
+function MobileNavBtn({
+  item,
+  view,
+  go,
+}: {
+  item: { id: string; label: string; icon: any; badge?: number };
+  view: string;
+  go: (item: any) => void;
+}) {
+  return (
+    <button
+      onClick={() => go(item)}
+      className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition relative"
+    >
+      <span className={view === item.id ? "text-foreground" : "text-muted-foreground"}>
+        <item.icon className="h-5 w-5" />
+      </span>
+      <span className={view === item.id ? "text-foreground" : "text-muted-foreground"}>
+        {item.label}
+      </span>
+      {item.badge && item.badge > 0 ? (
+        <span className="absolute top-1 right-1/4 min-w-[14px] h-3.5 px-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[9px] font-bold text-white flex items-center justify-center">
+          {item.badge > 9 ? "9+" : item.badge}
+        </span>
+      ) : null}
+    </button>
   );
 }

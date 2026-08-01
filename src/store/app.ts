@@ -13,6 +13,11 @@ interface AppState {
   profileUsername: string | null;
   viewProfile: (username: string) => void;
 
+  // For followers/following list views — whose list are we viewing
+  listUsername: string | null;
+  viewFollowers: (username: string) => void;
+  viewFollowing: (username: string) => void;
+
   createOpen: boolean;
   setCreateOpen: (v: boolean) => void;
 
@@ -43,6 +48,10 @@ export const useApp = create<AppState>((set) => ({
 
   profileUsername: null,
   viewProfile: (username) => set({ view: "profile", profileUsername: username }),
+
+  listUsername: null,
+  viewFollowers: (username) => set({ view: "followers", listUsername: username }),
+  viewFollowing: (username) => set({ view: "following", listUsername: username }),
 
   createOpen: false,
   setCreateOpen: (v) => set({ createOpen: v }),

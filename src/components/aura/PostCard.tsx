@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal, Bookmark, BookmarkCheck } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { categoryMeta } from "@/lib/constants";
 import { aura } from "@/lib/api";
@@ -26,6 +26,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const REPORT_REASONS = [
   { value: "spam", label: "Spam or repetitive", emoji: "📨" },
@@ -50,7 +60,14 @@ export function PostCard({ post }: { post: Post }) {
   const [reportOpen, setReportOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
+  const [bookmarked, setBookmarked] = useState(post.bookmarkedByMe ?? false);
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [removed, setRemoved] = useState(false);
   const cat = categoryMeta(post.category);
+
+  const isOwnPost = user && post.author && user.id === post.author.id;
 
   const toggleLike = async () => {
     if (!user) {
@@ -87,6 +104,43 @@ export function PostCard({ post }: { post: Post }) {
       toast({ title: "Couldn't report", description: e.message, variant: "destructive" });
     } finally {
       setReporting(false);
+    }
+  };
+
+  const toggleBookmark = async () => {
+    if (!user) {
+      toast({ title: "Log in to save posts", variant: "destructive" });
+      return;
+    }
+    setBookmarkBusy(true);
+    const prev = bookmarked;
+    setBookmarked(!prev);
+    try {
+      const r = await aura.bookmark(post.id);
+      toast({
+        title: r.bookmarked ? "Saved 🔖" : "Removed from saved",
+        description: r.bookmarked ? "Find it in your Bookmarks." : undefined,
+      });
+    } catch (e: any) {
+      setBookmarked(prev);
+      toast({ title: "Couldn't save", description: e.message, variant: "destructive" });
+    } finally {
+      setBookmarkBusy(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await aura.deletePost(post.id);
+      setRemoved(true);
+      bumpFeed();
+      toast({ title: "Post deleted 🗑", description: "Your flex is gone." });
+      setDeleteOpen(false);
+    } catch (e: any) {
+      toast({ title: "Couldn't delete", description: e.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -135,8 +189,28 @@ export function PostCard({ post }: { post: Post }) {
 
   const isFlagged = post.status === "flagged";
 
+  if (removed) {
+    return (
+      <motion.div
+        initial={{ opacity: 0.5, scale: 0.98 }}
+        animate={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.4 }}
+        className="aura-card rounded-2xl border border-white/5 p-8 text-center text-sm text-muted-foreground"
+      >
+        <Trash2 className="h-5 w-5 mx-auto mb-2 text-muted-foreground/50" />
+        Post deleted.
+      </motion.div>
+    );
+  }
+
   return (
-    <article className="aura-card rounded-2xl border border-white/5 overflow-hidden shadow-lg shadow-black/20">
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="aura-card rounded-2xl border border-white/5 overflow-hidden shadow-lg shadow-black/20 hover:border-white/10 transition-colors"
+    >
       {/* Header */}
       <div className="flex items-center gap-3 p-4">
         <Avatar
@@ -225,11 +299,35 @@ export function PostCard({ post }: { post: Post }) {
         <button
           onClick={share}
           className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-muted-foreground transition hover:text-emerald-300 hover:bg-emerald-500/10 active:scale-95"
+          title="Share"
         >
           <Share2 className="h-5 w-5" />
         </button>
+        {user && (
+          <button
+            onClick={toggleBookmark}
+            disabled={bookmarkBusy}
+            className={cn(
+              "flex items-center gap-2 rounded-full px-3 py-2 text-sm transition active:scale-95",
+              bookmarked
+                ? "text-amber-300"
+                : "text-muted-foreground hover:text-amber-300 hover:bg-amber-500/10"
+            )}
+            title={bookmarked ? "Saved" : "Save"}
+          >
+            <motion.span
+              key={bookmarked ? "saved" : "unsaved"}
+              initial={bookmarked ? { scale: [1, 1.3, 1] } : false}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.25 }}
+              className="inline-flex"
+            >
+              {bookmarked ? <BookmarkCheck className="h-5 w-5 fill-amber-400/30" /> : <Bookmark className="h-5 w-5" />}
+            </motion.span>
+          </button>
+        )}
         <div className="ml-auto">
-          {user && post.author && user.id !== post.author.id && (
+          {user && post.author && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="rounded-full p-2 text-muted-foreground transition hover:bg-white/5 hover:text-foreground active:scale-95">
@@ -237,12 +335,21 @@ export function PostCard({ post }: { post: Post }) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={() => setReportOpen(true)}
-                  className="text-amber-300 focus:text-amber-200 focus:bg-amber-500/10 cursor-pointer"
-                >
-                  <Flag className="h-4 w-4 mr-2" /> Report post
-                </DropdownMenuItem>
+                {isOwnPost ? (
+                  <DropdownMenuItem
+                    onClick={() => setDeleteOpen(true)}
+                    className="text-rose-300 focus:text-rose-200 focus:bg-rose-500/10 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete post
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => setReportOpen(true)}
+                    className="text-amber-300 focus:text-amber-200 focus:bg-amber-500/10 cursor-pointer"
+                  >
+                    <Flag className="h-4 w-4 mr-2" /> Report post
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -338,6 +445,28 @@ export function PostCard({ post }: { post: Post }) {
           </div>
         </DialogContent>
       </Dialog>
-    </article>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent className="bg-card border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes your flex and all its likes & comments. This can&rsquo;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.article>
   );
 }

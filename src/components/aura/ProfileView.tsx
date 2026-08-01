@@ -12,7 +12,7 @@ import { formatNumber, timeAgo } from "@/lib/utils";
 import type { AuraUser, Post } from "@/lib/types";
 
 export function ProfileView() {
-  const { profileUsername, user: me, setView, setUser, setEditProfileOpen } = useApp();
+  const { profileUsername, user: me, setView, setUser, setEditProfileOpen, viewFollowers, viewFollowing } = useApp();
   const { toast } = useToast();
   const [profile, setProfile] = useState<AuraUser | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -163,8 +163,18 @@ export function ProfileView() {
 
           <div className="mt-4 flex gap-6">
             <Stat label="Posts" value={profile.postCount ?? 0} />
-            <Stat label="Followers" value={profile.followerCount ?? 0} />
-            <Stat label="Following" value={profile.followingCount ?? 0} />
+            <button
+              onClick={() => viewFollowers(profile.username)}
+              className="text-left hover:opacity-80 transition"
+            >
+              <Stat label="Followers" value={profile.followerCount ?? 0} />
+            </button>
+            <button
+              onClick={() => viewFollowing(profile.username)}
+              className="text-left hover:opacity-80 transition"
+            >
+              <Stat label="Following" value={profile.followingCount ?? 0} />
+            </button>
           </div>
         </div>
       </div>

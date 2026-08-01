@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Sparkles, TrendingUp } from "lucide-react";
+import { Loader2, Sparkles, TrendingUp, Flame } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { POST_CATEGORIES } from "@/lib/constants";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import type { Post } from "@/lib/types";
 
 export function Feed() {
-  const { user, setCreateOpen, feedKey } = useApp();
+  const { user, setCreateOpen, setView, feedKey } = useApp();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -63,6 +63,12 @@ export function Feed() {
           </h1>
           <p className="text-sm text-muted-foreground">Real wins from real grinders.</p>
         </div>
+        <button
+          onClick={() => setView("trending")}
+          className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-300 hover:bg-orange-500/15 transition"
+        >
+          <Flame className="h-3.5 w-3.5" /> Trending
+        </button>
       </div>
 
       {/* Compose */}

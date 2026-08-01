@@ -42,6 +42,14 @@ export const aura = {
     }),
   like: (postId: string) =>
     api<{ liked: boolean }>(`/api/posts/${postId}/like`, { method: "POST" }),
+  deletePost: (postId: string) =>
+    api<{ ok: boolean }>(`/api/posts/${postId}/delete`, { method: "DELETE" }),
+  bookmark: (postId: string) =>
+    api<{ bookmarked: boolean }>(`/api/posts/${postId}/bookmark`, { method: "POST" }),
+  bookmarks: () =>
+    api<{ posts: Post[] }>("/api/bookmarks"),
+  trending: () =>
+    api<{ posts: Post[] }>("/api/trending"),
   comments: (postId: string) =>
     api<{ comments: Comment[] }>(`/api/posts/${postId}/comments`),
   comment: (postId: string, content: string) =>
@@ -55,6 +63,10 @@ export const aura = {
     api<{ user: AuraUser; posts: Post[] }>(`/api/users/${username}`),
   follow: (username: string) =>
     api<{ following: boolean }>(`/api/users/${username}/follow`, { method: "POST" }),
+  followers: (username: string) =>
+    api<{ users: AuraUser[] }>(`/api/users/${username}/followers`),
+  following: (username: string) =>
+    api<{ users: AuraUser[] }>(`/api/users/${username}/following`),
   explore: () =>
     api<{ users: AuraUser[] }>("/api/explore"),
 

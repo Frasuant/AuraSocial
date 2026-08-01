@@ -37,6 +37,8 @@ export interface Post {
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;
+  bookmarkedByMe?: boolean;
+  bookmarkedAt?: string;
 }
 
 export interface Comment {
@@ -62,4 +64,8 @@ export type ViewName =
   | "admin"
   | "deploy"
   | "notifications"
-  | "search";
+  | "search"
+  | "trending"
+  | "bookmarks"
+  | "followers"
+  | "following";
