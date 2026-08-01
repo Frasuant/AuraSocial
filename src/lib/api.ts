@@ -1,0 +1,94 @@
+import type { AuraUser, Post, Comment, ModerationResult } from "@/lib/types";
+
+async function api<T = any>(
+  url: string,
+  options?: RequestInit
+): Promise<T> {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      ...(options?.body ? { "Content-Type": "application/json" } : {}),
+      ...options?.headers,
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error((data as any)?.error || `Request failed (${res.status})`);
+  }
+  return data as T;
+}
+
+export const aura = {
+  // Auth
+  register: (body: { username: string; email: string; password: string }) =>
+    api<{ ok: boolean }>("/api/auth/register", { method: "POST", body: JSON.stringify(body) }),
+  login: (body: { identifier: string; password: string }) =>
+    api<{ ok: boolean }>("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  logout: () => api<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+  me: () => api<{ user: AuraUser | null }>("/api/auth/me"),
+
+  // Posts
+  feed: (params: { category?: string; status?: string; cursor?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.category) q.set("category", params.category);
+    if (params.status) q.set("status", params.status);
+    if (params.cursor) q.set("cursor", params.cursor);
+    return api<{ posts: Post[]; nextCursor: string | null }>(`/api/posts?${q}`);
+  },
+  createPost: (body: { caption: string; category: string; imageUrl?: string }) =>
+    api<{ post: Post; moderation: ModerationResult }>("/api/posts", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  like: (postId: string) =>
+    api<{ liked: boolean }>(`/api/posts/${postId}/like`, { method: "POST" }),
+  comments: (postId: string) =>
+    api<{ comments: Comment[] }>(`/api/posts/${postId}/comments`),
+  comment: (postId: string, content: string) =>
+    api<{ comment: Comment }>(`/api/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+
+  // Users
+  profile: (username: string) =>
+    api<{ user: AuraUser; posts: Post[] }>(`/api/users/${username}`),
+  follow: (username: string) =>
+    api<{ following: boolean }>(`/api/users/${username}/follow`, { method: "POST" }),
+  explore: () =>
+    api<{ users: AuraUser[] }>("/api/explore"),
+
+  // Upload
+  upload: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api<{ url: string }>("/api/upload", { method: "POST", body: fd });
+  },
+
+  // Admin
+  adminUsers: () => api<{ users: AuraUser[] }>("/api/admin/users"),
+  adminVerify: (userId: string, verified: boolean) =>
+    api<{ user: AuraUser }>("/api/admin/verify", {
+      method: "POST",
+      body: JSON.stringify({ userId, verified }),
+    }),
+  adminPosts: (status: string) =>
+    api<{ posts: Post[] }>(`/api/admin/posts?status=${status}`),
+  adminSetPostStatus: (postId: string, status: string) =>
+    api<{ post: Post }>(`/api/admin/posts/${postId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+  adminDeletePost: (postId: string) =>
+    api<{ ok: boolean }>(`/api/admin/posts/${postId}`, { method: "DELETE" }),
+  adminPassword: (currentPassword: string, newPassword: string) =>
+    api<{ ok: boolean }>("/api/admin/password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  adminStats: () =>
+    api<{
+      stats: { userCount: number; postCount: number; flaggedCount: number; verifiedCount: number };
+      recentFlags: any[];
+    }>("/api/admin/stats"),
+};

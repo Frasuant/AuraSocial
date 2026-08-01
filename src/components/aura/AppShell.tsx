@@ -1,0 +1,215 @@
+"use client";
+
+import {
+  Home,
+  Compass,
+  PlusCircle,
+  User as UserIcon,
+  ShieldCheck,
+  Rocket,
+  LogOut,
+  Flame,
+} from "lucide-react";
+import { aura } from "@/lib/api";
+import { useApp } from "@/store/app";
+import { cn } from "@/lib/utils";
+import { Avatar } from "./Avatar";
+import { Feed } from "./Feed";
+import { ExploreView } from "./ExploreView";
+import { ProfileView } from "./ProfileView";
+import { AdminPanel } from "./AdminPanel";
+import { CreatePostDialog } from "./CreatePostDialog";
+import { useToast } from "@/hooks/use-toast";
+
+export function AppShell() {
+  const {
+    user,
+    setUser,
+    view,
+    setView,
+    viewProfile,
+    setCreateOpen,
+    setDeployOpen,
+  } = useApp();
+  const { toast } = useToast();
+
+  const logout = async () => {
+    await aura.logout();
+    setUser(null);
+    setView("feed");
+    toast({ title: "Logged out", description: "See you on the grind." });
+  };
+
+  const navItems = [
+    { id: "feed" as const, label: "Home", icon: Home },
+    { id: "explore" as const, label: "Explore", icon: Compass },
+    { id: "create" as const, label: "Create", icon: PlusCircle, action: () => setCreateOpen(true) },
+    { id: "profile" as const, label: "Profile", icon: UserIcon, action: () => user && viewProfile(user.username) },
+  ];
+
+  const go = (item: (typeof navItems)[number]) => {
+    if (item.action) item.action();
+    else setView(item.id);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-white/5 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-3 sm:px-4">
+          <button
+            onClick={() => setView("feed")}
+            className="flex items-center gap-2"
+          >
+            <div className="aura-gradient-bg h-8 w-8 rounded-xl flex items-center justify-center aura-glow">
+              <Flame className="h-4.5 w-4.5 text-white" />
+            </div>
+            <span className="font-black text-lg tracking-tight hidden sm:block">
+              Aura<span className="aura-gradient-text">Media</span>
+            </span>
+          </button>
+
+          <div className="flex-1" />
+
+          <button
+            onClick={() => setDeployOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
+          >
+            <Rocket className="h-3.5 w-3.5 text-amber-300" /> Publish online
+          </button>
+
+          {user?.isAdmin && (
+            <button
+              onClick={() => setView("admin")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition",
+                view === "admin"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                  : "border border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" /> Admin
+            </button>
+          )}
+
+          <button
+            onClick={() => user && viewProfile(user.username)}
+            className="shrink-0"
+          >
+            <Avatar
+              username={user?.username || "?"}
+              avatarUrl={user?.avatarUrl}
+              avatarColor={user?.avatarColor}
+              isVerified={user?.isVerified}
+              size="sm"
+            />
+          </button>
+        </div>
+      </header>
+
+      {/* Body: sidebar + main */}
+      <div className="flex-1 mx-auto w-full max-w-6xl flex">
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 border-r border-white/5 py-4 px-3 sticky top-14 h-[calc(100vh-3.5rem)]">
+          <nav className="space-y-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => go(item)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                  view === item.id
+                    ? "bg-white/10 text-foreground"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                )}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </button>
+            ))}
+            {user?.isAdmin && (
+              <button
+                onClick={() => setView("admin")}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                  view === "admin"
+                    ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-200 ring-1 ring-amber-500/30"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                )}
+              >
+                <ShieldCheck className="h-5 w-5" />
+                Admin Console
+              </button>
+            )}
+            <button
+              onClick={() => setDeployOpen(true)}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition"
+            >
+              <Rocket className="h-5 w-5 text-amber-300" />
+              Deploy guide
+            </button>
+          </nav>
+
+          <div className="mt-auto space-y-2">
+            <button
+              onClick={logout}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300 transition"
+            >
+              <LogOut className="h-5 w-5" />
+              Log out
+            </button>
+            <p className="px-3 text-[10px] text-muted-foreground/60">
+              AuraMedia · v1.0 · AuraGuard AI active
+            </p>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 min-w-0 pb-20 md:pb-4">
+          {view === "feed" && <Feed />}
+          {view === "explore" && <ExploreView />}
+          {view === "profile" && <ProfileView />}
+          {view === "admin" && user?.isAdmin && <AdminPanel />}
+          {view === "admin" && !user?.isAdmin && (
+            <div className="max-w-2xl mx-auto px-4 py-20 text-center text-muted-foreground">
+              Admins only.
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/5 bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+        <div className="flex h-16">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => go(item)}
+              className={cn(
+                "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition",
+                view === item.id ? "text-foreground" : "text-muted-foreground"
+              )}
+            >
+              <item.icon className="h-5 w-5" />
+              {item.label}
+            </button>
+          ))}
+          {user?.isAdmin && (
+            <button
+              onClick={() => setView("admin")}
+              className={cn(
+                "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition",
+                view === "admin" ? "text-amber-300" : "text-muted-foreground"
+              )}
+            >
+              <ShieldCheck className="h-5 w-5" />
+              Admin
+            </button>
+          )}
+        </div>
+      </nav>
+
+      <CreatePostDialog />
+    </div>
+  );
+}

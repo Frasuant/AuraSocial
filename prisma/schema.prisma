@@ -1,0 +1,82 @@
+// AuraMedia schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  bio          String   @default("")
+  avatarUrl    String   @default("")
+  avatarColor  String   @default("violet")
+  isVerified   Boolean  @default(false)
+  isAdmin      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  posts     Post[]
+  likes     Like[]
+  comments  Comment[]
+  following Follow[] @relation("FollowFollower")
+  followers Follow[] @relation("FollowFollowing")
+}
+
+model Post {
+  id             String   @id @default(cuid())
+  authorId       String
+  caption        String
+  imageUrl       String   @default("")
+  category       String   @default("flex")
+  status         String   @default("published")
+  moderationNote String   @default("")
+  moderationRisk Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes    Like[]
+  comments Comment[]
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("FollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("FollowFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}

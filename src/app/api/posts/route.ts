@@ -1,0 +1,118 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
+import { moderateContent } from "@/lib/moderation";
+
+function formatPost(post: any, meId: string | null) {
+  return {
+    id: post.id,
+    caption: post.caption,
+    imageUrl: post.imageUrl,
+    category: post.category,
+    status: post.status,
+    moderationNote: post.moderationNote,
+    moderationRisk: post.moderationRisk,
+    createdAt: post.createdAt,
+    author: post.author
+      ? {
+          id: post.author.id,
+          username: post.author.username,
+          avatarUrl: post.author.avatarUrl,
+          avatarColor: post.author.avatarColor,
+          isVerified: post.author.isVerified,
+          isAdmin: post.author.isAdmin,
+        }
+      : null,
+    likeCount: post._count?.likes ?? 0,
+    commentCount: post._count?.comments ?? 0,
+    likedByMe: meId
+      ? (post.likes ?? []).some((l: any) => l.userId === meId)
+      : false,
+  };
+}
+
+export async function GET(req: Request) {
+  const me = await getSessionUser();
+  const { searchParams } = new URL(req.url);
+  const category = searchParams.get("category") || "";
+  const author = searchParams.get("author") || "";
+  const status = searchParams.get("status") || "published";
+  const cursor = searchParams.get("cursor");
+  const limit = Math.min(30, Number(searchParams.get("limit") || 15));
+
+  const where: any = { status };
+  if (category) where.category = category;
+  if (author) where.author = { username: author };
+
+  // For non-published statuses, require admin
+  if (status !== "published" && (!me || !me.isAdmin)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const posts = await db.post.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: limit + 1,
+    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    include: {
+      author: true,
+      _count: { select: { likes: true, comments: true } },
+      likes: me ? { where: { userId: me.id }, select: { userId: true } } : false,
+    },
+  });
+
+  const hasMore = posts.length > limit;
+  const items = (hasMore ? posts.slice(0, limit) : posts).map((p) =>
+    formatPost(p, me?.id ?? null)
+  );
+
+  return NextResponse.json({
+    posts: items,
+    nextCursor: hasMore ? items[items.length - 1]?.id : null,
+  });
+}
+
+export async function POST(req: Request) {
+  try {
+    const me = await getSessionUser();
+    if (!me)
+      return NextResponse.json({ error: "Please log in to post." }, { status: 401 });
+
+    const body = await req.json();
+    const caption = String(body.caption || "").trim();
+    const category = String(body.category || "flex");
+    const imageUrl = String(body.imageUrl || "").trim();
+
+    if (!caption)
+      return NextResponse.json({ error: "Write a caption first." }, { status: 400 });
+    if (caption.length > 2000)
+      return NextResponse.json({ error: "Caption is too long (max 2000)." }, { status: 400 });
+
+    // AI moderation
+    const verdict = await moderateContent(caption, category);
+    const status = verdict.approved ? "published" : "flagged";
+
+    const post = await db.post.create({
+      data: {
+        authorId: me.id,
+        caption,
+        category,
+        imageUrl,
+        status,
+        moderationNote: verdict.note,
+        moderationRisk: verdict.risk,
+      },
+      include: {
+        author: true,
+        _count: { select: { likes: true, comments: true } },
+      },
+    });
+
+    return NextResponse.json({
+      post: formatPost({ ...post, likes: [] }, me.id),
+      moderation: verdict,
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Server error" }, { status: 500 });
+  }
+}
