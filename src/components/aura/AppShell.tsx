@@ -15,6 +15,7 @@ import {
   Bookmark,
   Sparkles,
   FileEdit,
+  Activity,
 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -31,6 +32,8 @@ import { FollowListView } from "./FollowListView";
 import { DiscoveryView } from "./DiscoveryView";
 import { PostDetailView } from "./PostDetailView";
 import { DraftsView } from "./DraftsView";
+import { ActivityView } from "./ActivityView";
+import { SuggestedUsersWidget } from "./SuggestedUsersWidget";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { EditPostDialog } from "./EditPostDialog";
 import { EditProfileDialog } from "./EditProfileDialog";
@@ -79,6 +82,7 @@ export function AppShell() {
     { id: "create" as const, label: "Create", icon: PlusCircle, action: () => setCreateOpen(true) },
     { id: "bookmarks" as const, label: "Saved", icon: Bookmark },
     { id: "drafts" as const, label: "Drafts", icon: FileEdit },
+    { id: "activity" as const, label: "Activity", icon: Activity },
     {
       id: "notifications" as const,
       label: "Alerts",
@@ -214,7 +218,7 @@ export function AppShell() {
               Log out
             </button>
             <p className="px-3 text-[10px] text-muted-foreground/60">
-              AuraMedia · v1.7 · AuraGuard AI active
+              AuraMedia · v1.8 · AuraGuard AI active
             </p>
           </div>
         </aside>
@@ -227,6 +231,7 @@ export function AppShell() {
           {view === "explore" && <ExploreView />}
           {view === "bookmarks" && <BookmarksView />}
           {view === "drafts" && <DraftsView />}
+          {view === "activity" && <ActivityView />}
           {view === "postDetail" && <PostDetailView />}
           {view === "notifications" && <NotificationsView />}
           {view === "followers" && <FollowListView mode="followers" />}
@@ -239,6 +244,28 @@ export function AppShell() {
             </div>
           )}
         </main>
+
+        {/* Right sidebar — suggested users (desktop only, feed/discovery/trending views) */}
+        {(view === "feed" || view === "discovery" || view === "trending") && (
+          <aside className="hidden lg:block w-72 xl:w-80 shrink-0 py-4 px-3 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
+            <SuggestedUsersWidget />
+            <div className="mt-4 aura-card rounded-2xl border border-white/5 p-4">
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <Flame className="h-4 w-4 text-amber-300" /> Quick stats
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                AuraMedia is where grinders post real wins — cars, earnings, watches, fitness PRs.
+                No fakes. No scams. AI-moderated. ✨
+              </p>
+              <button
+                onClick={() => setView("activity")}
+                className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition"
+              >
+                View your activity →
+              </button>
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* Mobile bottom nav — 5 core actions */}

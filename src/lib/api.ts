@@ -91,6 +91,19 @@ export const aura = {
     api<{ users: AuraUser[] }>(`/api/users/${username}/following`),
   explore: () =>
     api<{ users: AuraUser[] }>("/api/explore"),
+  suggestedUsers: () =>
+    api<{ users: AuraUser[] }>("/api/suggested-users"),
+  activity: () =>
+    api<{
+      activity: Array<{
+        id: string;
+        type: "like" | "comment" | "repost";
+        createdAt: string;
+        content?: string;
+        post: { id: string; caption: string; category: string; createdAt: string; author: any };
+        repostOf?: any;
+      }>;
+    }>("/api/activity"),
 
   // Upload
   upload: (file: File) => {

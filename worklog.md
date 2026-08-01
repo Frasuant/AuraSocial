@@ -652,3 +652,64 @@ Task: QA the app, add drafts feature, edit post images, reposts view on post det
 - Add post scheduling (publish a draft at a future time).
 - Add image alt text for accessibility.
 - Add a "your activity" view (your likes, comments, reposts history).
+
+---
+
+## Task ID: 11 (webDevReview — suggested users widget, activity view, right sidebar)
+Agent: webDevReview (cron)
+Task: QA the app, add suggested users widget on feed sidebar, your activity view.
+
+### Current project status (assessment)
+- App was stable at v1.7 (all previous features working: feed, discovery, trending, bookmarks, notifications, search, profile editing, report post, post deletion/editing, liked posts, rate limiting, followers/following lists, post detail view, repost feature, @mentions, #hashtag autocomplete, image carousel, hashtag suggestions, bio search, drafts, edit images, reposts view).
+- QA via curl: all endpoints return 200, zero errors. 4 users, 9 posts, 1 flagged, 2 verified.
+- No bugs found — proceeded to add new features per next-phase recommendations.
+
+### Completed modifications
+
+**New features (2):**
+
+1. **Suggested Users Widget** (`GET /api/suggested-users` + `SuggestedUsersWidget`):
+   - New endpoint returns 5 suggested users to follow — prioritizes verified users first, then recent users with followers. Excludes users the current user already follows + themselves.
+   - New `SuggestedUsersWidget` component: compact user cards with avatar, username (with verified badge), follower count, and Follow/Following button.
+   - Rendered in a **new right sidebar** on desktop (lg+ screens) that appears on the Feed, Discovery, and Trending views.
+   - Below the widget: a "Quick stats" card with a short AuraMedia pitch + "View your activity →" button.
+   - Right sidebar is sticky (top-14, h-[calc(100vh-3.5rem)], overflow-y-auto).
+
+2. **Your Activity View** (`GET /api/activity` + `ActivityView`):
+   - New endpoint merges the current user's likes, comments, and reposts into a single timeline (sorted by date desc, capped at 50).
+   - Each item shows: activity type icon (heart/comment/repost), the post author's avatar, "You liked a flex by @username" / "You commented on @username" / "You reposted @username", the comment/quote content (if any), a clickable snippet of the original post (category badge + truncated caption → opens post detail), and a timestamp.
+   - framer-motion staggered entrance animation.
+   - Empty state: "📊 No activity yet — Start liking, commenting, and reposting to build your activity timeline."
+   - "Activity" nav item (Activity icon, teal/cyan gradient header) in sidebar.
+   - Verified: liked + commented on MarcoFlex's post → Activity shows 2 items ("You commented on @MarcoFlex" + "You liked a flex by @MarcoFlex").
+
+**Files changed:**
+- `src/app/api/suggested-users/route.ts` (new) — suggested users endpoint.
+- `src/app/api/activity/route.ts` (new) — merged activity timeline endpoint.
+- `src/lib/api.ts` — added `suggestedUsers()` + `activity()` methods.
+- `src/lib/types.ts` — added "activity" to ViewName.
+- `src/components/aura/SuggestedUsersWidget.tsx` (new) — suggested users sidebar widget.
+- `src/components/aura/ActivityView.tsx` (new) — activity timeline view.
+- `src/components/aura/AppShell.tsx` — wired ActivityView + SuggestedUsersWidget + right sidebar + Activity nav icon.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- API tests (curl):
+  - suggested-users → 4 users (Admin, MarcoFlex, KaiEarnings, etc.) ✓.
+  - activity → 0 items initially, then 2 items after liking + commenting on MarcoFlex's post ✓ (`[('comment', 'MarcoFlex'), ('like', 'MarcoFlex')]`).
+- agent-browser E2E: login ✓, feed "The Feed" + Discover ✓, sidebar "Activity" nav button + "Suggested for you" widget ✓, Activity view renders with "Your Activity" + "You commented on @MarcoFlex" + "You liked a flex by @MarcoFlex" ✓.
+- Dev log: zero errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation). Worked around with warmup + single-session tests.
+- In-memory rate limiter is per-process — for multi-instance production (Vercel), swap with Redis/Upstash.
+- The `/tmp` SQLite fallback on Vercel still doesn't persist — Turso remains the recommended fix.
+
+### Priority recommendations for next phase
+- Add direct messages (DM) between users (real-time via WebSocket mini-service).
+- Add email verification on signup.
+- Cache hashtag counts (invalidate on post create/delete).
+- Add post scheduling (publish a draft at a future time).
+- Add image alt text for accessibility.
+- Add a "who viewed your profile" feature.
+- Add a dark/light theme toggle.
