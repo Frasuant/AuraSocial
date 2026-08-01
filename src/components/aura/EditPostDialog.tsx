@@ -18,12 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { ModerationResult } from "@/lib/types";
 
+const MAX_IMAGES = 6;
+
 export function EditPostDialog() {
   const { editPostOpen, closeEditPost, editingPostId, editingInitial, bumpFeed } = useApp();
   const { toast } = useToast();
   const [caption, setCaption] = useState("");
   const [category, setCategory] = useState("flex");
-  const [imageUrl, setImageUrl] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -32,20 +34,30 @@ export function EditPostDialog() {
     if (editPostOpen && editingInitial) {
       setCaption(editingInitial.caption);
       setCategory(editingInitial.category);
-      setImageUrl(editingInitial.imageUrl);
+      // Initialize images from the editingInitial (imageUrl for backward compat)
+      const initialImages = editingInitial.imageUrl ? [editingInitial.imageUrl] : [];
+      setImages(initialImages);
     }
   }, [editPostOpen, editingInitial]);
 
   const onUpload = async (file: File) => {
+    if (images.length >= MAX_IMAGES) {
+      toast({ title: `Max ${MAX_IMAGES} images`, variant: "destructive" });
+      return;
+    }
     setUploading(true);
     try {
       const r = await aura.upload(file);
-      setImageUrl(r.url);
+      setImages((prev) => [...prev, r.url]);
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
     } finally {
       setUploading(false);
     }
+  };
+
+  const removeImage = (idx: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const submit = async () => {
@@ -55,7 +67,7 @@ export function EditPostDialog() {
       const r = await aura.editPost(editingPostId, {
         caption: caption.trim(),
         category,
-        imageUrl,
+        images,
       });
       const m: ModerationResult = r.moderation;
       if (m.approved) {
@@ -90,7 +102,7 @@ export function EditPostDialog() {
             <span className="aura-gradient-text">Edit Flex</span>
           </DialogTitle>
           <DialogDescription>
-            Update your caption, category, or photo. AuraGuard re-scans on save.
+            Update your caption, category, or photos. AuraGuard re-scans on save.
           </DialogDescription>
         </DialogHeader>
 
@@ -129,16 +141,53 @@ export function EditPostDialog() {
             </div>
           </div>
 
-          {/* Image */}
-          {imageUrl ? (
-            <div className="relative rounded-xl overflow-hidden border border-white/10">
-              <img src={imageUrl} alt="" className="w-full max-h-72 object-cover" />
-              <button
-                onClick={() => setImageUrl("")}
-                className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 hover:bg-black/80"
-              >
-                <X className="h-4 w-4" />
-              </button>
+          {/* Images (carousel) */}
+          {images.length > 0 ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((url, idx) => (
+                  <div
+                    key={idx}
+                    className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group"
+                  >
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <button
+                      onClick={() => removeImage(idx)}
+                      className="absolute top-1 right-1 rounded-full bg-black/60 p-1 hover:bg-black/80 opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    {idx === 0 && (
+                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                        Cover
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <label className="aspect-square rounded-xl border border-dashed border-white/15 bg-white/5 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/10 transition">
+                    {uploading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <span className="text-[10px] text-muted-foreground">Add</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) onUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                {images.length}/{MAX_IMAGES} photos · first image is the cover
+              </p>
             </div>
           ) : (
             <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/5 py-8 cursor-pointer hover:bg-white/10 transition">
@@ -148,7 +197,7 @@ export function EditPostDialog() {
                 <ImagePlus className="h-6 w-6 text-muted-foreground" />
               )}
               <span className="text-sm text-muted-foreground">
-                {uploading ? "Uploading…" : "Add a photo (optional)"}
+                {uploading ? "Uploading…" : "Add photos (up to 6)"}
               </span>
               <input
                 type="file"
@@ -157,6 +206,7 @@ export function EditPostDialog() {
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) onUpload(f);
+                  e.target.value = "";
                 }}
               />
             </label>

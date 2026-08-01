@@ -35,7 +35,7 @@ export const aura = {
     if (params.cursor) q.set("cursor", params.cursor);
     return api<{ posts: Post[]; nextCursor: string | null }>(`/api/posts?${q}`);
   },
-  createPost: (body: { caption: string; category: string; imageUrl?: string; images?: string[] }) =>
+  createPost: (body: { caption: string; category: string; imageUrl?: string; images?: string[]; draft?: boolean }) =>
     api<{ post: Post; moderation: ModerationResult }>("/api/posts", {
       method: "POST",
       body: JSON.stringify(body),
@@ -44,11 +44,15 @@ export const aura = {
     api<{ liked: boolean }>(`/api/posts/${postId}/like`, { method: "POST" }),
   deletePost: (postId: string) =>
     api<{ ok: boolean }>(`/api/posts/${postId}/delete`, { method: "DELETE" }),
-  editPost: (postId: string, body: { caption: string; category: string; imageUrl?: string }) =>
+  editPost: (postId: string, body: { caption: string; category: string; images?: string[]; draft?: boolean; publish?: boolean }) =>
     api<{ post: Post; moderation: ModerationResult }>(`/api/posts/${postId}/edit`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  reposts: (postId: string) =>
+    api<{ reposts: Array<{ id: string; caption: string; createdAt: string; author: any }> }>(`/api/posts/${postId}/reposts`),
+  drafts: () =>
+    api<{ posts: Post[] }>("/api/drafts"),
   bookmark: (postId: string) =>
     api<{ bookmarked: boolean }>(`/api/posts/${postId}/bookmark`, { method: "POST" }),
   bookmarks: () =>

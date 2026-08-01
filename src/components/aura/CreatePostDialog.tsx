@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ImagePlus, Loader2, ShieldCheck, X, Hash } from "lucide-react";
+import { ImagePlus, Loader2, ShieldCheck, X, Hash, FileEdit } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
@@ -125,8 +125,8 @@ export function CreatePostDialog() {
     }, 0);
   };
 
-  const submit = async () => {
-    if (!caption.trim() || posting) return;
+  const submit = async (asDraft = false) => {
+    if ((!caption.trim() && !asDraft) || posting) return;
     setPosting(true);
     try {
       const r = await aura.createPost({
@@ -134,19 +134,24 @@ export function CreatePostDialog() {
         category,
         images,
         imageUrl: images[0] || "",
+        draft: asDraft,
       });
-      const m: ModerationResult = r.moderation;
-      if (m.approved) {
-        toast({
-          title: "Posted! 🔥",
-          description: m.summary || "Your flex is live.",
-        });
+      if (asDraft) {
+        toast({ title: "Draft saved 📝", description: "Find it in your Drafts to finish later." });
       } else {
-        toast({
-          title: "Held for review",
-          description: `AuraGuard flagged this: ${m.note || m.summary}`,
-          variant: "destructive",
-        });
+        const m: ModerationResult = r.moderation;
+        if (m.approved) {
+          toast({
+            title: "Posted! 🔥",
+            description: m.summary || "Your flex is live.",
+          });
+        } else {
+          toast({
+            title: "Held for review",
+            description: `AuraGuard flagged this: ${m.note || m.summary}`,
+            variant: "destructive",
+          });
+        }
       }
       bumpFeed();
       close();
@@ -320,7 +325,16 @@ export function CreatePostDialog() {
               Cancel
             </Button>
             <Button
-              onClick={submit}
+              variant="ghost"
+              onClick={() => submit(true)}
+              disabled={posting || uploading}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <FileEdit className="h-4 w-4 mr-1.5" />
+              Draft
+            </Button>
+            <Button
+              onClick={() => submit(false)}
               disabled={!caption.trim() || posting || uploading}
               className="flex-1 aura-gradient-bg text-white hover:opacity-90"
             >

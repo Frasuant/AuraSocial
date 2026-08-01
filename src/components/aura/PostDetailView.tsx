@@ -20,6 +20,8 @@ export function PostDetailView() {
   const { toast } = useToast();
   const [post, setPost] = useState<(Post & { bookmarkCount: number; repostCount: number; repostOf: any }) | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [reposts, setReposts] = useState<Array<{ id: string; caption: string; createdAt: string; author: any }>>([]);
+  const [showReposts, setShowReposts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
@@ -43,6 +45,17 @@ export function PostDetailView() {
       cancelled = true;
     };
   }, [postDetailId, toast]);
+
+  const loadReposts = async () => {
+    if (!postDetailId) return;
+    try {
+      const r = await aura.reposts(postDetailId);
+      setReposts(r.reposts);
+      setShowReposts(true);
+    } catch (e: any) {
+      toast({ title: "Couldn't load reposts", description: e.message, variant: "destructive" });
+    }
+  };
 
   const submitComment = async () => {
     if (!commentText.trim() || !postDetailId || posting) return;
@@ -159,15 +172,68 @@ export function PostDetailView() {
           <p className="text-lg font-bold tabular-nums">{post.likeCount}</p>
           <p className="text-xs text-muted-foreground">Likes</p>
         </div>
-        <div>
+        <button onClick={loadReposts} className="hover:opacity-80 transition">
           <p className="text-lg font-bold tabular-nums">{post.repostCount}</p>
           <p className="text-xs text-muted-foreground">Reposts</p>
-        </div>
+        </button>
         <div>
           <p className="text-lg font-bold tabular-nums">{post.bookmarkCount}</p>
           <p className="text-xs text-muted-foreground">Saves</p>
         </div>
       </div>
+
+      {/* Reposts list */}
+      {showReposts && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="px-1 text-sm font-semibold text-muted-foreground">
+              {reposts.length} repost{reposts.length !== 1 ? "s" : ""}
+            </h3>
+            <button
+              onClick={() => setShowReposts(false)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Hide
+            </button>
+          </div>
+          {reposts.length === 0 ? (
+            <div className="aura-card rounded-2xl border border-white/5 p-6 text-center text-sm text-muted-foreground">
+              No reposts yet. Be the first to share this flex.
+            </div>
+          ) : (
+            reposts.map((r) => (
+              <div key={r.id} className="aura-card rounded-2xl border border-white/5 p-3 flex gap-2.5">
+                <Avatar
+                  username={r.author.username}
+                  avatarUrl={r.author.avatarUrl}
+                  avatarColor={r.author.avatarColor}
+                  isVerified={r.author.isVerified}
+                  size="sm"
+                  onClick={() => viewProfile(r.author.username)}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => viewProfile(r.author.username)}
+                      className="font-semibold text-sm hover:underline"
+                    >
+                      {r.author.username}
+                    </button>
+                    <span className="text-xs text-muted-foreground">· {timeAgo(r.createdAt)}</span>
+                  </div>
+                  <p className="text-sm mt-0.5">
+                    <RichText
+                      text={r.caption}
+                      onMention={(username) => viewProfile(username)}
+                      onHashtag={(tag) => { setSearchQuery(`#${tag}`); setView("explore"); }}
+                    />
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* All comments */}
       <div className="space-y-3">

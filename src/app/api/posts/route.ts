@@ -98,6 +98,7 @@ export async function POST(req: Request) {
     const caption = String(body.caption || "").trim();
     const category = String(body.category || "flex");
     const imageUrl = String(body.imageUrl || "").trim();
+    const isDraft = Boolean(body.draft);
     // images: array of URLs (carousel). imageUrl is kept for backward compat (first image).
     const imagesRaw = Array.isArray(body.images) ? body.images : [];
     const images = imagesRaw
@@ -106,14 +107,21 @@ export async function POST(req: Request) {
       .slice(0, 6); // max 6 images
     const primaryImage = imageUrl || (images.length > 0 ? images[0] : "");
 
-    if (!caption)
+    // Drafts can have empty caption; published posts require a caption
+    if (!isDraft && !caption)
       return NextResponse.json({ error: "Write a caption first." }, { status: 400 });
     if (caption.length > 2000)
       return NextResponse.json({ error: "Caption is too long (max 2000)." }, { status: 400 });
 
-    // AI moderation
-    const verdict = await moderateContent(caption, category);
-    const status = verdict.approved ? "published" : "flagged";
+    // Drafts skip AI moderation (will be moderated on publish)
+    let status: string;
+    let verdict = { approved: true, risk: 0, category: "safe", note: "", summary: "" };
+    if (isDraft) {
+      status = "draft";
+    } else {
+      verdict = await moderateContent(caption, category);
+      status = verdict.approved ? "published" : "flagged";
+    }
 
     const post = await db.post.create({
       data: {

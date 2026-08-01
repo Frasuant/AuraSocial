@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Bookmark,
   Sparkles,
+  FileEdit,
 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -29,6 +30,7 @@ import { BookmarksView } from "./BookmarksView";
 import { FollowListView } from "./FollowListView";
 import { DiscoveryView } from "./DiscoveryView";
 import { PostDetailView } from "./PostDetailView";
+import { DraftsView } from "./DraftsView";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { EditPostDialog } from "./EditPostDialog";
 import { EditProfileDialog } from "./EditProfileDialog";
@@ -76,6 +78,7 @@ export function AppShell() {
     { id: "explore" as const, label: "Explore", icon: Compass },
     { id: "create" as const, label: "Create", icon: PlusCircle, action: () => setCreateOpen(true) },
     { id: "bookmarks" as const, label: "Saved", icon: Bookmark },
+    { id: "drafts" as const, label: "Drafts", icon: FileEdit },
     {
       id: "notifications" as const,
       label: "Alerts",
@@ -211,7 +214,7 @@ export function AppShell() {
               Log out
             </button>
             <p className="px-3 text-[10px] text-muted-foreground/60">
-              AuraMedia · v1.4 · AuraGuard AI active
+              AuraMedia · v1.7 · AuraGuard AI active
             </p>
           </div>
         </aside>
@@ -223,6 +226,7 @@ export function AppShell() {
           {view === "trending" && <TrendingView />}
           {view === "explore" && <ExploreView />}
           {view === "bookmarks" && <BookmarksView />}
+          {view === "drafts" && <DraftsView />}
           {view === "postDetail" && <PostDetailView />}
           {view === "notifications" && <NotificationsView />}
           {view === "followers" && <FollowListView mode="followers" />}

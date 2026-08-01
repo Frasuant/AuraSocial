@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { moderateContent } from "@/lib/moderation";
 import { rateLimit } from "@/lib/rate-limit";
 
-// Edit a post — only the author can edit. Re-runs AI moderation on the new caption.
+// Edit a post — only the author can edit. Supports caption, category, images, and publishing drafts.
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -31,21 +31,37 @@ export async function PATCH(
     const body = await req.json();
     const caption = String(body.caption || "").trim();
     const category = String(body.category || "flex");
-    const imageUrl = String(body.imageUrl ?? "").trim();
+    const isDraft = Boolean(body.draft);
+    const publish = Boolean(body.publish);
 
-    if (!caption)
+    // Parse images array
+    const imagesRaw = Array.isArray(body.images) ? body.images : [];
+    const images = imagesRaw
+      .map((s: any) => String(s || "").trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    const primaryImage = images.length > 0 ? images[0] : String(body.imageUrl ?? "").trim();
+
+    // Drafts can have empty caption; published posts require one
+    if (!isDraft && !caption)
       return NextResponse.json({ error: "Caption can't be empty." }, { status: 400 });
     if (caption.length > 2000)
       return NextResponse.json({ error: "Caption is too long (max 2000)." }, { status: 400 });
 
-    // Re-run AI moderation on the edited caption
-    const verdict = await moderateContent(caption, category);
-    // If a previously-published post is edited and now flagged, hold it; if flagged→safe, re-publish
     let newStatus = post.status;
-    if (!verdict.approved) {
-      newStatus = "flagged";
-    } else if (post.status === "flagged") {
-      newStatus = "published";
+    let verdict = { approved: true, risk: 0, category: "safe", note: "", summary: "" };
+
+    if (isDraft) {
+      // Saving as draft — skip moderation
+      newStatus = "draft";
+    } else if (publish || post.status !== "draft") {
+      // Publishing a draft OR editing a published post — run moderation
+      verdict = await moderateContent(caption, category);
+      if (!verdict.approved) {
+        newStatus = "flagged";
+      } else {
+        newStatus = "published";
+      }
     }
 
     const updated = await db.post.update({
@@ -53,7 +69,8 @@ export async function PATCH(
       data: {
         caption,
         category,
-        imageUrl,
+        imageUrl: primaryImage,
+        images: JSON.stringify(images),
         status: newStatus,
         moderationNote: verdict.note,
         moderationRisk: verdict.risk,
@@ -64,11 +81,22 @@ export async function PATCH(
       },
     });
 
+    // Parse images for response
+    let responseImages: string[] = [];
+    try {
+      const parsed = JSON.parse(updated.images || "[]");
+      if (Array.isArray(parsed)) responseImages = parsed.filter(Boolean);
+    } catch {
+      responseImages = [];
+    }
+    if (responseImages.length === 0 && updated.imageUrl) responseImages = [updated.imageUrl];
+
     return NextResponse.json({
       post: {
         id: updated.id,
         caption: updated.caption,
         imageUrl: updated.imageUrl,
+        images: responseImages,
         category: updated.category,
         status: updated.status,
         moderationNote: updated.moderationNote,

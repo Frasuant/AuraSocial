@@ -71,4 +71,5 @@ export type ViewName =
   | "followers"
   | "following"
   | "discovery"
-  | "postDetail";
+  | "postDetail"
+  | "drafts";

@@ -580,3 +580,75 @@ Task: QA the app, add post image carousel, hashtag suggestions in CreatePostDial
 - Cache hashtag counts (invalidate on post create/delete).
 - Add image alt text for accessibility.
 - Add a "drafts" feature (save posts without publishing).
+
+---
+
+## Task ID: 10 (webDevReview — drafts, edit images, reposts view)
+Agent: webDevReview (cron)
+Task: QA the app, add drafts feature, edit post images, reposts view on post detail.
+
+### Current project status (assessment)
+- App was stable at v1.6 (all previous features working: feed, discovery, trending, bookmarks, notifications, search, profile editing, report post, post deletion/editing, liked posts, rate limiting, followers/following lists, post detail view, repost feature, @mentions, #hashtag autocomplete, image carousel, hashtag suggestions, bio search).
+- QA via curl: all endpoints return 200, zero errors. 4 users, 8 posts, 1 flagged, 2 verified.
+- No bugs found — proceeded to add new features per next-phase recommendations.
+
+### Completed modifications
+
+**New features (3):**
+
+1. **Drafts feature** (`POST /api/posts` with `draft:true` + `GET /api/drafts` + `DraftsView`):
+   - Posts can be saved as drafts (status="draft") — skips AI moderation, only visible to the author.
+   - CreatePostDialog: new "Draft" button (ghost variant, FileEdit icon) alongside Cancel + Post.
+   - Drafts can have empty captions (unlike published posts).
+   - New `DraftsView` component: lists drafts with caption preview, image thumbnails, "Edit" + "Publish" + "Delete" buttons. Publish runs AI moderation on the caption.
+   - Publish a draft via `PATCH /api/posts/[id]/edit` with `publish:true` — runs moderation, sets status to published/flagged.
+   - "Drafts" nav item (FileEdit icon, slate gradient header) in sidebar.
+   - Drafts list sorted by `updatedAt` (most recently edited first).
+
+2. **Edit post images** (enhanced `PATCH /api/posts/[id]/edit`):
+   - EditPostDialog now supports the full image carousel (up to 6 images) — same grid UI as CreatePostDialog with "Cover" badge, remove-on-hover, "Add" tile.
+   - Edit endpoint accepts `images[]` array, serializes to JSON, updates `imageUrl` (cover) automatically.
+   - Supports `draft` and `publish` flags for draft workflow.
+
+3. **Reposts view on post detail** (`GET /api/posts/[id]/reposts` + PostDetailView):
+   - New endpoint returns up to 50 published reposts of a post (author + caption + timestamp).
+   - On the PostDetailView, the "Reposts" stat in the stats grid is now clickable — loads and shows a list of who reposted with their quote caption.
+   - Each repost card shows avatar, username (clickable → profile), timestamp, and the quote caption (with RichText linkification for @mentions and #hashtags).
+   - "Hide" button to collapse the reposts list.
+
+**Files changed:**
+- `src/app/api/drafts/route.ts` (new) — list current user's drafts.
+- `src/app/api/posts/[id]/reposts/route.ts` (new) — list reposts of a post.
+- `src/app/api/posts/route.ts` — createPost accepts `draft` flag; drafts skip moderation.
+- `src/app/api/posts/[id]/edit/route.ts` — rewritten to support `images[]`, `draft`, `publish` flags.
+- `src/lib/api.ts` — added `drafts()`, `reposts()`, updated `createPost`/`editPost` signatures.
+- `src/lib/types.ts` — added "drafts" to ViewName.
+- `src/components/aura/DraftsView.tsx` (new) — drafts list with publish/edit/delete.
+- `src/components/aura/CreatePostDialog.tsx` — added "Draft" button.
+- `src/components/aura/EditPostDialog.tsx` — rewritten with multi-image carousel support.
+- `src/components/aura/PostDetailView.tsx` — clickable Reposts stat + reposts list section.
+- `src/components/aura/AppShell.tsx` — wired DraftsView + FileEdit nav icon.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- API tests (curl):
+  - create draft → `status: draft` ✓.
+  - drafts list → 1 draft ✓.
+  - publish draft (edit with publish:true) → `status: published`, `moderation: True` ✓ (AI moderation ran).
+  - reposts list → 0 reposts ✓.
+- agent-browser E2E: login ✓, feed "The Feed" + Discover ✓, Create dialog opens with "New Flex" ✓, Drafts view renders with "Work-in-progress flexes" + "No drafts" empty state ✓.
+- Dev log: zero errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation). Worked around with warmup + single-session tests.
+- In-memory rate limiter is per-process — for multi-instance production (Vercel), swap with Redis/Upstash.
+- The `/tmp` SQLite fallback on Vercel still doesn't persist — Turso remains the recommended fix.
+
+### Priority recommendations for next phase
+- Add direct messages (DM) between users (real-time via WebSocket mini-service).
+- Add email verification on signup.
+- Cache hashtag counts (invalidate on post create/delete).
+- Add a "suggested users to follow" widget on the feed sidebar.
+- Add post scheduling (publish a draft at a future time).
+- Add image alt text for accessibility.
+- Add a "your activity" view (your likes, comments, reposts history).
