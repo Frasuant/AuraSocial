@@ -94,3 +94,45 @@ Next-phase recommendations (for the recurring webDevReview agent):
 - Add rate limiting on auth + post creation for production safety.
 - Consider a "report post" button for community-driven moderation on top of AI.
 
+
+---
+
+## Task ID: 3 (Vercel deployment fixes — security + DB)
+Agent: main (Z.ai Code)
+Task: User deployed to Vercel and hit 3 issues: (1) Prisma "Unable to open database file" error because SQLite can't write on Vercel's read-only serverless FS, (2) public "Use Admin demo credentials" button let ANYONE log in as Admin, (3) public "How do I publish AuraMedia online" link exposed deployment internals to all users.
+
+Work Log:
+- **DB fix**: Rewrote `src/lib/db.ts` with a 3-backend auto-resolver:
+  - `libsql://` URL → Turso cloud SQLite (persistent, works on Vercel) via `@prisma/adapter-libsql` + `@libsql/client`
+  - `file:` URL to a writable dir → SQLite file (local dev)
+  - fallback → `/tmp/aura.db` bootstrapped from bundled `db/seed.db` (makes app BOOT on Vercel even without env setup)
+- Installed `@prisma/adapter-libsql` + `@libsql/client`. Fixed export name (`PrismaLibSql`, not `PrismaLibSQL`).
+- Generated `db/seed.db` (schema + Admin + 3 demo users + 4 demo posts) via `prisma db push` + `scripts/seed.ts` against it. Committed (added `!db/seed.db` to .gitignore so Vercel bundles it).
+- **Security fix 1**: Removed the "Use Admin demo credentials" button + the `fillAdmin` function + the `ShieldCheck` hint from `AuthScreen.tsx`. Admin credentials are now NEVER shown in the public UI — only the owner knows them (from private handover/worklog).
+- **Security fix 2**: Removed the "Publish online" button from the public header and the "Deploy guide" button from the public sidebar. Deploy guide is now ADMIN-ONLY:
+  - `<DeployGuide />` only renders when `user?.isAdmin` (in `page.tsx`)
+  - Sidebar "Deploy guide" button is inside the `user?.isAdmin && (...)` block
+  - Added a "Deploy" button to the Admin Console header (visible on mobile + desktop)
+- **Rewrote DeployGuide** Vercel tab: now recommends Turso (free cloud SQLite, 2-min setup, persistent) as the primary path. Added a red warning box explaining WHY plain SQLite breaks on Vercel ("read-only filesystem → Unable to open the database file"). Step-by-step Turso CLI commands. Railway (Postgres) and VPS tabs updated too.
+- **New `/api/admin/db-status` endpoint**: returns backend type (turso/postgres/sqlite-file/sqlite-tmp), persistence flag, human-readable note, masked DATABASE_URL.
+- **New `DbStatusBanner` component** at the top of the Admin Console: shows green "Database: persistent" (Turso/Postgres) or amber "Database: NOT persistent" (ephemeral SQLite) + explanation + "Set up a persistent database" button that opens the Deploy Guide.
+- Added `aura.adminDbStatus()` to the API client.
+
+Verification (agent-browser, single shell session):
+- Public login screen: NO "admin demo", NO "admin123", NO "publish online", NO "deploy guide" — PASS (zero leaks).
+- Login as Admin/Admin123 still works (creds known only to owner).
+- Admin Console shows: "Database: NOT persistent" banner + "SQLite file… falls back to /tmp (ephemeral). Set up Turso for persistence." + "Set up a persistent database" button.
+- "Deploy" button visible in Admin Console header (mobile-friendly).
+- "Deploy guide" button only in admin sidebar.
+- Lint: 0 errors, 0 warnings.
+
+Stage Summary:
+- The 3 user-reported issues are FIXED:
+  1. DB works on Vercel: auto-bootstraps /tmp from bundled seed.db (browseable immediately); add Turso env vars for real persistence.
+  2. No public admin credentials button — Admin login is owner-only knowledge.
+  3. No public deploy links — Deploy Guide is admin-only, with a prominent DB-status warning in the Admin Console.
+- The user needs to: (a) redeploy on Vercel (git push), (b) optionally create a free Turso DB + set DATABASE_URL + LIBSQL_TOKEN env vars for persistent user signups, (c) log in as Admin and change the password.
+
+Next-phase recommendations:
+- The /tmp SQLite bootstrap makes the app browseable on Vercel but signups don't persist across cold starts — strongly recommend Turso (documented in admin-only Deploy Guide).
+- Consider adding a "first-run admin password setup" flow so the owner sets their own password on first deploy (instead of the seeded default).

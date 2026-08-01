@@ -71,13 +71,6 @@ export function AppShell() {
 
           <div className="flex-1" />
 
-          <button
-            onClick={() => setDeployOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
-          >
-            <Rocket className="h-3.5 w-3.5 text-amber-300" /> Publish online
-          </button>
-
           {user?.isAdmin && (
             <button
               onClick={() => setView("admin")}
@@ -128,26 +121,28 @@ export function AppShell() {
               </button>
             ))}
             {user?.isAdmin && (
-              <button
-                onClick={() => setView("admin")}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
-                  view === "admin"
-                    ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-200 ring-1 ring-amber-500/30"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                )}
-              >
-                <ShieldCheck className="h-5 w-5" />
-                Admin Console
-              </button>
+              <>
+                <button
+                  onClick={() => setView("admin")}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                    view === "admin"
+                      ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-200 ring-1 ring-amber-500/30"
+                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                  )}
+                >
+                  <ShieldCheck className="h-5 w-5" />
+                  Admin Console
+                </button>
+                <button
+                  onClick={() => setDeployOpen(true)}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition"
+                >
+                  <Rocket className="h-5 w-5 text-amber-300" />
+                  Deploy guide
+                </button>
+              </>
             )}
-            <button
-              onClick={() => setDeployOpen(true)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition"
-            >
-              <Rocket className="h-5 w-5 text-amber-300" />
-              Deploy guide
-            </button>
           </nav>
 
           <div className="mt-auto space-y-2">

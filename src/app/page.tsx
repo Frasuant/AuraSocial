@@ -34,7 +34,8 @@ export default function Home() {
   return (
     <>
       {user ? <AppShell /> : <AuthScreen />}
-      <DeployGuide />
+      {/* Deploy guide is ADMIN-ONLY — never shown to the public */}
+      {user?.isAdmin && <DeployGuide />}
     </>
   );
 }

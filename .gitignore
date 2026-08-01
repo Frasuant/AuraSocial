@@ -52,3 +52,6 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Bundle the seed database with the deploy (needed for Vercel /tmp bootstrap)
+!db/seed.db

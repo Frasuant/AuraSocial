@@ -54,68 +54,107 @@ export function DeployGuide() {
 
         <Tabs defaultValue="vercel">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="vercel"><Globe className="h-4 w-4 mr-1.5" />Vercel</TabsTrigger>
+            <TabsTrigger value="vercel"><Globe className="h-4 w-4 mr-1.5" />Vercel + Turso</TabsTrigger>
             <TabsTrigger value="railway"><Server className="h-4 w-4 mr-1.5" />Railway</TabsTrigger>
             <TabsTrigger value="vps"><Terminal className="h-4 w-4 mr-1.5" />VPS</TabsTrigger>
           </TabsList>
 
-          {/* VERCEL */}
+          {/* VERCEL + TURSO (the correct, persistent path) */}
           <TabsContent value="vercel" className="mt-4 space-y-3 text-sm">
             <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
-              <p className="font-medium text-emerald-300">Easiest · Free tier · Auto HTTPS</p>
+              <p className="font-medium text-emerald-300">Recommended · Free tier · Persistent DB · Auto HTTPS</p>
               <p className="text-xs text-emerald-200/80 mt-0.5">
-                Vercel built Next.js, so deploys are zero-config. Great for getting AuraMedia live fast.
+                Vercel hosts the app, Turso hosts a free cloud SQLite database. Together they give you a
+                real, persistent social network where user signups survive forever.
               </p>
             </div>
+
+            <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 p-3 text-xs">
+              <p className="font-semibold text-rose-300 mb-1">⚠ Why you MUST use Turso (not plain SQLite)</p>
+              <p className="text-rose-100/90">
+                Vercel's serverless filesystem is <b>read-only</b>. A local SQLite file (<code>file:./prod.db</code>)
+                throws <i>"Unable to open the database file"</i> on every login/signup. Turso is a cloud
+                SQLite that works perfectly on Vercel. The app auto-detects a <code>libsql://</code> URL.
+              </p>
+            </div>
+
             <Step n={1} title="Push the code to GitHub">
               <CodeBlock id="v1">{`git init && git add . && git commit -m "AuraMedia"
 # create an empty repo on github.com first, then:
 git remote add origin https://github.com/YOU/auramedia.git
 git push -u origin main`}</CodeBlock>
             </Step>
-            <Step n={2} title="Import on Vercel">
+
+            <Step n={2} title="Create a free Turso database (2 min, persistent cloud SQLite)">
+              Sign up at{" "}
+              <a className="text-primary underline" href="https://turso.tech" target="_blank" rel="noreferrer">
+                turso.tech <ExternalLink className="inline h-3 w-3" />
+              </a>{" "}
+              (free tier: 500 DBs, 9GB). Then run:
+              <div className="mt-2">
+                <CodeBlock id="v2">{`# install the Turso CLI
+curl -sSfL https://get.tur.so/install.sh | bash
+
+# log in & create a database called "auramedia"
+turso auth login
+turso db create auramedia
+
+# get your connection URL + auth token
+turso db show auramedia --url
+turso db tokens create auramedia`}</CodeBlock>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                You'll get a URL like <code>libsql://auramedia-xxx.turso.io</code> and a token string. Keep both.
+              </p>
+            </Step>
+
+            <Step n={3} title="Import on Vercel">
               Go to{" "}
               <a className="text-primary underline" href="https://vercel.com/new" target="_blank" rel="noreferrer">
                 vercel.com/new <ExternalLink className="inline h-3 w-3" />
               </a>{" "}
-              → pick your repo → keep all defaults → click <b>Deploy</b>.
+              → pick your GitHub repo → keep all defaults → click <b>Deploy</b>.
             </Step>
-            <Step n={3} title="Set environment variables">
-              In Vercel → Project → Settings → Environment Variables, add:
+
+            <Step n={4} title="Set environment variables in Vercel">
+              Vercel → Project → Settings → Environment Variables → add these 3 (for Production + Preview):
               <div className="mt-2">
-                <CodeBlock id="v2">{`DATABASE_URL=file:./prod.db
-AURA_SECRET=<any long random string>`}</CodeBlock>
+                <CodeBlock id="v3">{`DATABASE_URL   =  libsql://auramedia-xxx.turso.io
+LIBSQL_TOKEN   =  eyJ...your-token-from-step-2...
+AURA_SECRET    =  any-long-random-string-eg-$(openssl rand -hex 32)`}</CodeBlock>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                SQLite uses a local file. For a persistent disk on Vercel, upgrade to a hosted DB
-                (see note below) or use Vercel Postgres.
+                <b>Redeploy</b> after adding the variables (Deployments → latest → ⋯ → Redeploy).
               </p>
             </Step>
-            <Step n={4} title="Run the database migration + seed">
-              After deploy, open the Vercel terminal (or run locally with the prod DB) once:
+
+            <Step n={5} title="Create the tables + Admin account (one-time)">
+              Run locally with your Turso URL so the schema + seed land in the cloud DB:
               <div className="mt-2">
-                <CodeBlock id="v3">{`bunx prisma db push
+                <CodeBlock id="v4">{`export DATABASE_URL="libsql://auramedia-xxx.turso.io"
+export LIBSQL_TOKEN="your-token"
+bunx prisma db push
 bun run scripts/seed.ts`}</CodeBlock>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                This creates the <code>Admin</code> account (password <code>Admin123</code>) and demo
-                posts. Change the admin password immediately from <b>Admin → Settings</b>.
+                This creates the <code>Admin</code> account. The default password is in your private
+                handover notes — <b>change it immediately</b> in Admin → Settings once you log in.
               </p>
             </Step>
+
             <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-xs">
-              <b>Going to production with many users?</b> Swap SQLite for a hosted database —
-              Vercel Postgres, Neon, Supabase, or PlanetScale. Just change the <code>provider</code> in{" "}
-              <code>prisma/schema.prisma</code> and the <code>DATABASE_URL</code> env var, then run{" "}
-              <code>prisma db push</code> again.
+              <b>Without Turso</b> the app still boots (it auto-copies a bundled seed DB to Vercel's
+              <code> /tmp</code> on cold start) so you can browse — but <b>user signups won't persist</b>
+              across cold starts. Turso fixes that. It's free and takes 2 minutes.
             </div>
           </TabsContent>
 
-          {/* RAILWAY */}
+          {/* RAILWAY (Postgres) */}
           <TabsContent value="railway" className="mt-4 space-y-3 text-sm">
             <div className="rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 p-3">
-              <p className="font-medium text-fuchsia-300">Easiest with a real DB · Free trial</p>
+              <p className="font-medium text-fuchsia-300">All-in-one · Free trial · Persistent Postgres</p>
               <p className="text-xs text-fuchsia-200/80 mt-0.5">
-                Railway gives you a container + a Postgres DB in one click. Best if you expect real users.
+                Railway gives you a container + a Postgres DB in one project. Good if you prefer Postgres over SQLite.
               </p>
             </div>
             <Step n={1} title="Push code to GitHub (same as Vercel step 1).">
@@ -134,26 +173,24 @@ git push -u origin main`}</CodeBlock>
               In the project → <b>New → Database → Add PostgreSQL</b>. Railway gives you a{" "}
               <code>DATABASE_URL</code> automatically.
             </Step>
-            <Step n={4} title="Wire environment variables">
-              Reference the Postgres URL and add a secret:
+            <Step n={4} title="Switch the Prisma provider to postgresql & set env">
+              In <code>prisma/schema.prisma</code> change <code>provider = "sqlite"</code> to{" "}
+              <code>provider = "postgresql"</code>, commit, push. Then in Railway → Variables:
               <div className="mt-2">
                 <CodeBlock id="r2">{`DATABASE_URL=\${{Postgres.DATABASE_URL}}
 AURA_SECRET=<long random string>`}</CodeBlock>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Update <code>prisma/schema.prisma</code> provider to <code>postgresql</code> first.
-              </p>
             </Step>
             <Step n={5} title="Set the start command & build">
               In the service → Settings:
               <div className="mt-2">
-                <CodeBlock id="r3">{`Build:  bun install && bunx prisma generate && bunx prisma db push && bun run build
+                <CodeBlock id="r3">{`Build:  bun install && bunx prisma generate && bunx prisma db push && bun run scripts/seed.ts && bun run build
 Start:  bun .next/standalone/server.js`}</CodeBlock>
               </div>
             </Step>
             <Step n={6} title="Generate a public domain">
               Settings → Networking → <b>Generate Domain</b>. Your app is now live at
-              <code> https://auramedia.up.railway.app</code>. Run <code>scripts/seed.ts</code> once to create Admin.
+              <code> https://auramedia.up.railway.app</code>.
             </Step>
           </TabsContent>
 
@@ -162,7 +199,7 @@ Start:  bun .next/standalone/server.js`}</CodeBlock>
             <div className="rounded-xl bg-sky-500/10 border border-sky-500/20 p-3">
               <p className="font-medium text-sky-300">Full control · ~$5/mo · any VPS (Hetzner, DigitalOcean, etc.)</p>
               <p className="text-xs text-sky-200/80 mt-0.5">
-                You rent a server, install Node/Bun, run AuraMedia behind Caddy/Nginx with HTTPS.
+                You rent a server, install Bun, run AuraMedia behind Caddy with HTTPS. SQLite file works fine here (persistent disk).
               </p>
             </div>
             <Step n={1} title="Provision a server (Ubuntu 22+) and SSH in.">
@@ -203,16 +240,16 @@ auramedia.yourdomain.com {
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs">
           <p className="font-semibold text-amber-300 mb-1">After going live — do these 4 things:</p>
           <ol className="list-decimal list-inside space-y-1 text-amber-100/90">
-            <li>Log in as <code>Admin</code> / <code>Admin123</code> and change the password in Admin → Settings.</li>
-            <li>Set a strong <code>AURA_SECRET</code> env var (used to sign sessions).</li>
-            <li>Move from SQLite to a real DB (Postgres/MySQL) once you have real traffic.</li>
+            <li>Log in as <code>Admin</code> with the password from your private handover notes, then change it in <b>Admin → Settings</b> immediately.</li>
+            <li>Set a strong <code>AURA_SECRET</code> env var (signs your session cookies).</li>
+            <li>Use Turso/Postgres for the database — plain SQLite does NOT persist on Vercel.</li>
             <li>Review the AuraGuard moderation queue regularly — AI catches most sketchy posts, but the Admin has the final call.</li>
           </ol>
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
           <Badge variant="secondary">Next.js 16</Badge>
-          <Badge variant="secondary">Prisma + SQLite/Postgres</Badge>
+          <Badge variant="secondary">Prisma + Turso/SQLite</Badge>
           <Badge variant="secondary">AuraGuard AI moderation</Badge>
           <Badge variant="secondary">Verification badges</Badge>
         </div>

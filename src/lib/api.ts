@@ -91,4 +91,11 @@ export const aura = {
       stats: { userCount: number; postCount: number; flaggedCount: number; verifiedCount: number };
       recentFlags: any[];
     }>("/api/admin/stats"),
+  adminDbStatus: () =>
+    api<{
+      backend: "turso" | "postgres" | "sqlite-file" | "sqlite-tmp";
+      persistent: boolean;
+      note: string;
+      databaseUrl: string;
+    }>("/api/admin/db-status"),
 };

@@ -5,13 +5,15 @@ import { Sparkles, Flame, Trophy, ShieldCheck, Eye, EyeOff } from "lucide-react"
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
+// NOTE: Admin credentials are NEVER shown publicly. The platform owner logs in with
+// credentials provided only in the private handover/worklog, then changes them in Admin → Settings.
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export function AuthScreen() {
-  const { setUser, setDeployOpen } = useApp();
+  const { setUser } = useApp();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -24,11 +26,6 @@ export function AuthScreen() {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPw, setRegPw] = useState("");
-
-  const fillAdmin = () => {
-    setLoginId("Admin");
-    setLoginPw("Admin123");
-  };
 
   const doLogin = async () => {
     setLoading(true);
@@ -116,7 +113,7 @@ export function AuthScreen() {
                     id="loginId"
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
-                    placeholder="Admin"
+                    placeholder="your_username"
                     onKeyDown={(e) => e.key === "Enter" && doLogin()}
                   />
                 </div>
@@ -143,17 +140,6 @@ export function AuthScreen() {
                 <Button onClick={doLogin} disabled={loading} className="w-full aura-gradient-bg text-white hover:opacity-90">
                   {loading ? "Logging in…" : "Log in"}
                 </Button>
-                <button
-                  onClick={fillAdmin}
-                  className="w-full text-left rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm hover:bg-amber-500/15 transition"
-                >
-                  <span className="flex items-center gap-2 font-medium text-amber-300">
-                    <ShieldCheck className="h-4 w-4" /> Use Admin demo credentials
-                  </span>
-                  <span className="text-xs text-amber-200/70 mt-0.5 block">
-                    Username: <b>Admin</b> · Password: <b>Admin123</b> — tap to autofill
-                  </span>
-                </button>
               </TabsContent>
 
               <TabsContent value="register" className="space-y-4">
@@ -196,14 +182,6 @@ export function AuthScreen() {
               </TabsContent>
             </Tabs>
 
-            <div className="mt-6 pt-5 border-t border-white/5 text-center">
-              <button
-                onClick={() => setDeployOpen(true)}
-                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
-              >
-                How do I publish AuraMedia online?
-              </button>
-            </div>
           </div>
         </div>
       </main>

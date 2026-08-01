@@ -12,6 +12,9 @@ import {
   Trash2,
   ShieldAlert,
   BarChart3,
+  Rocket,
+  Database,
+  AlertTriangle,
 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -26,19 +29,30 @@ import { cn, timeAgo, formatNumber } from "@/lib/utils";
 import type { AuraUser, Post } from "@/lib/types";
 
 export function AdminPanel() {
+  const { setDeployOpen } = useApp();
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-4">
       <div className="flex items-center gap-3">
         <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center aura-glow">
           <ShieldCheck className="h-6 w-6 text-white" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold">Admin Console</h1>
           <p className="text-sm text-muted-foreground">
             Verify members, moderate the queue, manage the platform.
           </p>
         </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setDeployOpen(true)}
+          className="shrink-0"
+        >
+          <Rocket className="h-4 w-4 mr-1.5" /> Deploy
+        </Button>
       </div>
+
+      <DbStatusBanner />
 
       <Tabs defaultValue="dashboard">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
@@ -437,6 +451,76 @@ function SettingsTab() {
         <Button onClick={save} disabled={saving} className="w-full aura-gradient-bg text-white hover:opacity-90">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update password"}
         </Button>
+      </div>
+    </div>
+  );
+}
+
+function DbStatusBanner() {
+  const { setDeployOpen } = useApp();
+  const [status, setStatus] = useState<{
+    backend: string;
+    persistent: boolean;
+    note: string;
+    databaseUrl: string;
+  } | null>(null);
+
+  useEffect(() => {
+    aura.adminDbStatus().then(setStatus).catch(() => {});
+  }, []);
+
+  if (!status) return null;
+
+  const ok = status.persistent;
+  const backendLabel =
+    status.backend === "turso"
+      ? "Turso (cloud SQLite)"
+      : status.backend === "postgres"
+      ? "PostgreSQL"
+      : status.backend === "sqlite-file"
+      ? "SQLite file"
+      : "Ephemeral /tmp SQLite";
+
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border p-4 flex items-start gap-3",
+        ok
+          ? "border-emerald-500/30 bg-emerald-500/10"
+          : "border-amber-500/40 bg-amber-500/10"
+      )}
+    >
+      <div
+        className={cn(
+          "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
+          ok ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"
+        )}
+      >
+        {ok ? <Database className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className={cn("font-semibold", ok ? "text-emerald-300" : "text-amber-300")}>
+            {ok ? "Database: persistent" : "Database: NOT persistent"}
+          </p>
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-muted-foreground">
+            {backendLabel}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">{status.note}</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-1 font-mono break-all">
+          {status.databaseUrl}
+        </p>
+        {!ok && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="mt-2"
+            onClick={() => setDeployOpen(true)}
+          >
+            <Rocket className="h-3.5 w-3.5 mr-1.5" /> Set up a persistent database
+          </Button>
+        )}
       </div>
     </div>
   );
