@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { moderateContent } from "@/lib/moderation";
+import { rateLimit } from "@/lib/rate-limit";
 
 function formatPost(post: any, meId: string | null) {
   return {
@@ -77,6 +78,10 @@ export async function POST(req: Request) {
     const me = await getSessionUser();
     if (!me)
       return NextResponse.json({ error: "Please log in to post." }, { status: 401 });
+
+    // Rate limit: 10 posts per minute per IP
+    const rl = rateLimit(req, { key: "post", limit: 10, windowSec: 60 });
+    if (rl.limited) return rl.response!;
 
     const body = await req.json();
     const caption = String(body.caption || "").trim();

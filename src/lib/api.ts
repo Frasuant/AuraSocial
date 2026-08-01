@@ -44,12 +44,19 @@ export const aura = {
     api<{ liked: boolean }>(`/api/posts/${postId}/like`, { method: "POST" }),
   deletePost: (postId: string) =>
     api<{ ok: boolean }>(`/api/posts/${postId}/delete`, { method: "DELETE" }),
+  editPost: (postId: string, body: { caption: string; category: string; imageUrl?: string }) =>
+    api<{ post: Post; moderation: ModerationResult }>(`/api/posts/${postId}/edit`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   bookmark: (postId: string) =>
     api<{ bookmarked: boolean }>(`/api/posts/${postId}/bookmark`, { method: "POST" }),
   bookmarks: () =>
     api<{ posts: Post[] }>("/api/bookmarks"),
   trending: () =>
     api<{ posts: Post[] }>("/api/trending"),
+  userLikes: (username: string) =>
+    api<{ posts: Post[] }>(`/api/users/${username}/likes`),
   comments: (postId: string) =>
     api<{ comments: Comment[] }>(`/api/posts/${postId}/comments`),
   comment: (postId: string, content: string) =>

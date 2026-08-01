@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarDays, UserMinus, UserPlus, Loader2, Pencil, LogOut } from "lucide-react";
+import { ArrowLeft, CalendarDays, UserMinus, UserPlus, Loader2, Pencil, LogOut, Heart, Grid3x3 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar } from "./Avatar";
 import { PostCard } from "./PostCard";
 import { Button } from "@/components/ui/button";
-import { formatNumber, timeAgo } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn, formatNumber, timeAgo } from "@/lib/utils";
 import type { AuraUser, Post } from "@/lib/types";
 
 export function ProfileView() {
@@ -16,21 +17,41 @@ export function ProfileView() {
   const { toast } = useToast();
   const [profile, setProfile] = useState<AuraUser | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [likedPosts, setLikedPosts] = useState<Post[]>([]);
+  const [likedLoading, setLikedLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     if (!profileUsername) return;
+    let cancelled = false;
     setLoading(true);
     aura
       .profile(profileUsername)
       .then((r) => {
+        if (cancelled) return;
         setProfile(r.user);
         setPosts(r.posts);
       })
-      .catch((e) => toast({ title: "Couldn't load profile", description: e.message, variant: "destructive" }))
-      .finally(() => setLoading(false));
+      .catch((e) => !cancelled && toast({ title: "Couldn't load profile", description: e.message, variant: "destructive" }))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, [profileUsername, toast]);
+
+  const loadLiked = async () => {
+    if (!profileUsername || likedLoading) return;
+    setLikedLoading(true);
+    try {
+      const r = await aura.userLikes(profileUsername);
+      setLikedPosts(r.posts);
+    } catch (e: any) {
+      toast({ title: "Couldn't load liked posts", description: e.message, variant: "destructive" });
+    } finally {
+      setLikedLoading(false);
+    }
+  };
 
   const follow = async () => {
     if (!me || !profile) return;
@@ -179,21 +200,49 @@ export function ProfileView() {
         </div>
       </div>
 
-      {/* Posts grid */}
+      {/* Posts / Liked tabs */}
       <div className="space-y-4">
-        <h2 className="px-1 text-sm font-semibold text-muted-foreground">
-          {posts.length === 0 ? "No posts yet" : `${posts.length} flex${posts.length > 1 ? "es" : ""}`}
-        </h2>
-        {posts.length === 0 ? (
-          <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
-            <div className="text-4xl mb-2">📸</div>
-            <p className="text-sm text-muted-foreground">
-              {isMe ? "You haven't posted yet. Drop your first flex!" : "No posts to show yet."}
-            </p>
-          </div>
-        ) : (
-          posts.map((p) => <PostCard key={p.id} post={p} />)
-        )}
+        <Tabs defaultValue="posts" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="posts">
+              <Grid3x3 className="h-4 w-4 mr-1.5" /> Posts
+              <span className="ml-1.5 text-xs text-muted-foreground">{posts.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="liked" onClick={loadLiked}>
+              <Heart className="h-4 w-4 mr-1.5" /> Liked
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="posts" className="mt-4 space-y-4">
+            {posts.length === 0 ? (
+              <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+                <div className="text-4xl mb-2">📸</div>
+                <p className="text-sm text-muted-foreground">
+                  {isMe ? "You haven't posted yet. Drop your first flex!" : "No posts to show yet."}
+                </p>
+              </div>
+            ) : (
+              posts.map((p) => <PostCard key={p.id} post={p} />)
+            )}
+          </TabsContent>
+
+          <TabsContent value="liked" className="mt-4 space-y-4">
+            {likedLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : likedPosts.length === 0 ? (
+              <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+                <div className="text-4xl mb-2">💛</div>
+                <p className="text-sm text-muted-foreground">
+                  {isMe ? "You haven't liked any posts yet. Go hype some flexes!" : "No liked posts to show."}
+                </p>
+              </div>
+            ) : (
+              likedPosts.map((p) => <PostCard key={p.id} post={p} />)
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createSession, getSessionUser, hashPassword } from "@/lib/auth";
 import { AVATAR_COLORS } from "@/lib/constants";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    // Rate limit: 5 signups per minute per IP
+    const rl = rateLimit(req, { key: "register", limit: 5, windowSec: 60 });
+    if (rl.limited) return rl.response!;
+
     const body = await req.json();
     const username = String(body.username || "").trim();
     const email = String(body.email || "").trim().toLowerCase();

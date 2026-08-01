@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createSession, verifyPassword } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    // Rate limit: 10 login attempts per minute per IP
+    const rl = rateLimit(req, { key: "login", limit: 10, windowSec: 60 });
+    if (rl.limited) return rl.response!;
+
     const body = await req.json();
     const identifier = String(body.identifier || "").trim();
     const password = String(body.password || "");

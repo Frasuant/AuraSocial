@@ -285,3 +285,79 @@ Task: QA the app, add new features (post deletion, bookmarks, trending, follower
 - Add email verification on signup.
 - Add post editing (currently only delete).
 - Consider a "discovery" algorithm (posts from people 2 hops away in the follow graph).
+
+---
+
+## Task ID: 6 (webDevReview — post editing, liked posts, rate limiting, profile tabs)
+Agent: webDevReview (cron)
+Task: QA the app, add post editing, liked posts view, rate limiting, improve profile UX with tabs.
+
+### Current project status (assessment)
+- App was stable at v1.2 (all v1/v1.1/v1.2 features working: feed, trending, bookmarks, notifications, search, profile editing, report post, post deletion, followers/following lists).
+- QA via curl: all endpoints return 200, zero errors. 4 users, 6 posts, 1 flagged, 2 verified.
+- No bugs found — proceeded to add new features.
+
+### Completed modifications
+
+**New features (4):**
+
+1. **Post editing** (`PATCH /api/posts/[id]/edit` + `EditPostDialog`):
+   - Authors can edit their own posts' caption, category, and image.
+   - **Re-runs AuraGuard AI moderation** on the edited caption — if a previously-flagged post is edited to be clean, it auto-re-publishes; if a clean post is edited to be sketchy, it auto-flags.
+   - New `EditPostDialog` component (mirrors CreatePostDialog layout) with category picker, caption textarea, image upload, AuraGuard notice.
+   - "Edit post" item added to the PostCard dropdown menu (for own posts, alongside Delete).
+   - Store additions: `editingPostId`, `editingInitial`, `editPostOpen`, `openEditPost()`, `closeEditPost()`.
+   - EditPostDialog wired into AppShell.
+
+2. **Liked posts view** (`GET /api/users/[username]/likes` + Profile tabs):
+   - New endpoint returns up to 50 posts a user has liked (published only), with likedByMe/bookmarkedByMe flags.
+   - Profile now has **Posts / Liked tabs** (Grid3x3 + Heart icons).
+   - Liked tab lazy-loads on click (loadLiked), shows empty state "💛 You haven't liked any posts yet. Go hype some flexes!".
+
+3. **Rate limiting** (`src/lib/rate-limit.ts` middleware):
+   - Simple in-memory rate limiter (per-IP buckets, auto-cleanup every 60s).
+   - Applied to: login (10/min), register (5/min), post creation (10/min), report (15/min), edit (20/min).
+   - Returns 429 with `Retry-After` + `X-RateLimit-*` headers + human-readable error message.
+   - Verified: 10 login attempts allowed (401s), 11th+ returns 429.
+
+4. **Profile tabs UX** (Posts/Liked):
+   - Tab triggers with icons (Grid3x3, Heart) + post count badge.
+   - Lazy loading for liked posts (only fetches when tab is clicked).
+   - Consistent empty states with emoji + helpful copy.
+
+**Files changed:**
+- `src/lib/rate-limit.ts` (new) — rate limiter middleware.
+- `src/app/api/posts/[id]/edit/route.ts` (new) — edit endpoint with AI re-moderation.
+- `src/app/api/users/[username]/likes/route.ts` (new) — liked posts endpoint.
+- `src/app/api/auth/login/route.ts` — added rate limit (10/min).
+- `src/app/api/auth/register/route.ts` — added rate limit (5/min).
+- `src/app/api/posts/route.ts` — added rate limit (10/min).
+- `src/app/api/posts/[id]/report/route.ts` — added rate limit (15/min).
+- `src/lib/api.ts` — added `editPost()` + `userLikes()` methods.
+- `src/store/app.ts` — added edit post state (`editingPostId`, `editingInitial`, `openEditPost`, `closeEditPost`).
+- `src/components/aura/EditPostDialog.tsx` (new) — edit dialog.
+- `src/components/aura/PostCard.tsx` — added "Edit post" to dropdown for own posts + Pencil icon.
+- `src/components/aura/ProfileView.tsx` — added Posts/Liked tabs + loadLiked.
+- `src/components/aura/AppShell.tsx` — wired EditPostDialog.
+
+### Verification results
+- Lint: 0 errors, 0 warnings.
+- API tests (curl):
+  - edit post ✓ (returns updated post with new caption + re-moderation),
+  - user likes ✓ (returns empty for Admin),
+  - rate limit ✓ (10 × 401, then 429 with Retry-After header).
+- agent-browser E2E: login ✓, feed "The Feed" + Trending ✓, profile "Posts"/"Liked" tabs ✓, Liked tab empty state "💛 You haven't liked any posts yet. Go hype some flexes!" ✓, Admin's own posts visible in feed ✓.
+- Dev log: zero errors, zero 500s, zero runtime exceptions.
+
+### Unresolved issues / risks
+- Dev server process dies between bash tool calls (environment limitation). Worked around with warmup + single-session tests.
+- In-memory rate limiter is per-process — for multi-instance production (Vercel), swap with Redis/Upstash. Documented in the rate-limit.ts header.
+- The `/tmp` SQLite fallback on Vercel still doesn't persist — Turso remains the recommended fix.
+
+### Priority recommendations for next phase
+- Add direct messages (DM) between users (real-time via WebSocket mini-service).
+- Add "repost" / "quote" feature.
+- Add email verification on signup.
+- Add a "discovery" feed (posts from people 2 hops away in the follow graph).
+- Swap in-memory rate limiter for Upstash Redis for multi-instance production.
+- Add post detail view (clicking a post opens a focused full-page view with all comments).

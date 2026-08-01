@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal, Bookmark, BookmarkCheck } from "lucide-react";
+import { Heart, MessageCircle, Share2, Flag, Trash2, MoreHorizontal, Bookmark, BookmarkCheck, Pencil } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { categoryMeta } from "@/lib/constants";
 import { aura } from "@/lib/api";
@@ -48,7 +48,7 @@ const REPORT_REASONS = [
 ];
 
 export function PostCard({ post }: { post: Post }) {
-  const { user, viewProfile, bumpFeed } = useApp();
+  const { user, viewProfile, bumpFeed, openEditPost } = useApp();
   const { toast } = useToast();
   const [liked, setLiked] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -336,12 +336,26 @@ export function PostCard({ post }: { post: Post }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 {isOwnPost ? (
-                  <DropdownMenuItem
-                    onClick={() => setDeleteOpen(true)}
-                    className="text-rose-300 focus:text-rose-200 focus:bg-rose-500/10 cursor-pointer"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" /> Delete post
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        openEditPost(post.id, {
+                          caption: post.caption,
+                          category: post.category,
+                          imageUrl: post.imageUrl,
+                        })
+                      }
+                      className="cursor-pointer"
+                    >
+                      <Pencil className="h-4 w-4 mr-2" /> Edit post
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setDeleteOpen(true)}
+                      className="text-rose-300 focus:text-rose-200 focus:bg-rose-500/10 cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" /> Delete post
+                    </DropdownMenuItem>
+                  </>
                 ) : (
                   <DropdownMenuItem
                     onClick={() => setReportOpen(true)}

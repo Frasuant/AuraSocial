@@ -27,6 +27,7 @@ import { TrendingView } from "./TrendingView";
 import { BookmarksView } from "./BookmarksView";
 import { FollowListView } from "./FollowListView";
 import { CreatePostDialog } from "./CreatePostDialog";
+import { EditPostDialog } from "./EditPostDialog";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -254,6 +255,7 @@ export function AppShell() {
       </nav>
 
       <CreatePostDialog />
+      <EditPostDialog />
       <EditProfileDialog />
     </div>
   );

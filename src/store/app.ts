@@ -24,6 +24,13 @@ interface AppState {
   editProfileOpen: boolean;
   setEditProfileOpen: (v: boolean) => void;
 
+  // Post editing
+  editingPostId: string | null;
+  editingInitial: { caption: string; category: string; imageUrl: string } | null;
+  editPostOpen: boolean;
+  openEditPost: (postId: string, initial: { caption: string; category: string; imageUrl: string }) => void;
+  closeEditPost: () => void;
+
   deployOpen: boolean;
   setDeployOpen: (v: boolean) => void;
 
@@ -58,6 +65,14 @@ export const useApp = create<AppState>((set) => ({
 
   editProfileOpen: false,
   setEditProfileOpen: (v) => set({ editProfileOpen: v }),
+
+  editingPostId: null,
+  editingInitial: null,
+  editPostOpen: false,
+  openEditPost: (postId, initial) =>
+    set({ editingPostId: postId, editingInitial: initial, editPostOpen: true }),
+  closeEditPost: () =>
+    set({ editingPostId: null, editingInitial: null, editPostOpen: false }),
 
   deployOpen: false,
   setDeployOpen: (v) => set({ deployOpen: v }),

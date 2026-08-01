@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 const REASONS = ["spam", "scam", "harassment", "hate", "explicit", "illegal", "other"];
 
@@ -12,6 +13,10 @@ export async function POST(
     const me = await getSessionUser();
     if (!me)
       return NextResponse.json({ error: "Please log in to report." }, { status: 401 });
+
+    // Rate limit: 15 reports per minute per IP
+    const rl = rateLimit(req, { key: "report", limit: 15, windowSec: 60 });
+    if (rl.limited) return rl.response!;
 
     const { id } = await params;
     const body = await req.json();
