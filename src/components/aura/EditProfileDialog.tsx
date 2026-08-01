@@ -81,7 +81,7 @@ export function EditProfileDialog() {
 
   return (
     <Dialog open={editProfileOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md bg-card border-white/10">
+      <DialogContent className="max-w-md bg-card border-border">
         <DialogHeader>
           <DialogTitle className="aura-gradient-text">Edit profile</DialogTitle>
           <DialogDescription>
@@ -106,7 +106,7 @@ export function EditProfileDialog() {
           <div>
             <Label className="text-xs text-muted-foreground">Profile photo</Label>
             {avatarUrl ? (
-              <div className="relative mt-1.5 rounded-xl overflow-hidden border border-white/10">
+              <div className="relative mt-1.5 rounded-xl overflow-hidden border border-border">
                 <img src={avatarUrl} alt="" className="h-24 w-full object-cover" />
                 <button
                   onClick={() => setAvatarUrl("")}
@@ -116,7 +116,7 @@ export function EditProfileDialog() {
                 </button>
               </div>
             ) : (
-              <label className="mt-1.5 flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-white/15 bg-white/5 py-5 cursor-pointer hover:bg-white/10 transition">
+              <label className="mt-1.5 flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border bg-muted/30 py-5 cursor-pointer hover:bg-muted/50 transition">
                 {uploading ? (
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : (
@@ -167,7 +167,7 @@ export function EditProfileDialog() {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="What's your grind about?"
-              className="mt-1.5 min-h-[80px] resize-none bg-white/5 border-white/10"
+              className="mt-1.5 min-h-[80px] resize-none bg-muted/30 border-border"
               maxLength={200}
             />
             <div className="mt-1 text-right text-xs text-muted-foreground">{bio.length}/200</div>

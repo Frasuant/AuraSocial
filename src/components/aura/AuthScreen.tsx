@@ -61,7 +61,7 @@ export function AuthScreen() {
         <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-10 items-center">
           {/* Hero */}
           <div className="hidden lg:block">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground mb-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1 text-xs text-muted-foreground mb-6">
               <Sparkles className="h-3.5 w-3.5 text-amber-300" /> AI-moderated · Verified flexes only
             </div>
             <h1 className="text-5xl xl:text-6xl font-black leading-[1.05] tracking-tight">
@@ -79,7 +79,7 @@ export function AuthScreen() {
                 { icon: Trophy, label: "Goal", desc: "set & hit" },
                 { icon: ShieldCheck, label: "Verified", desc: "by Admin" },
               ].map((f) => (
-                <div key={f.label} className="rounded-2xl border border-white/5 bg-white/5 p-4">
+                <div key={f.label} className="rounded-2xl border border-border bg-muted/30 p-4">
                   <f.icon className="h-5 w-5 text-amber-300 mb-2" />
                   <p className="font-semibold text-sm">{f.label}</p>
                   <p className="text-xs text-muted-foreground">{f.desc}</p>
@@ -89,7 +89,7 @@ export function AuthScreen() {
           </div>
 
           {/* Auth card */}
-          <div className="aura-card rounded-3xl border border-white/10 p-6 sm:p-8 shadow-2xl shadow-black/40">
+          <div className="aura-card rounded-3xl border border-border p-6 sm:p-8 shadow-2xl shadow-black/40">
             <div className="flex items-center gap-3 mb-6">
               <div className="aura-gradient-bg h-11 w-11 rounded-2xl flex items-center justify-center aura-glow">
                 <Flame className="h-6 w-6 text-white" />

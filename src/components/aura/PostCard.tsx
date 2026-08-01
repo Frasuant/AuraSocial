@@ -227,7 +227,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
         initial={{ opacity: 0.5, scale: 0.98 }}
         animate={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.4 }}
-        className="aura-card rounded-2xl border border-white/5 p-8 text-center text-sm text-muted-foreground"
+        className="aura-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground"
       >
         <Trash2 className="h-5 w-5 mx-auto mb-2 text-muted-foreground/50" />
         Post deleted.
@@ -241,7 +241,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="aura-card rounded-2xl border border-white/5 overflow-hidden shadow-lg shadow-black/20 hover:border-white/10 transition-colors"
+      className="aura-card rounded-2xl border border-border overflow-hidden shadow-lg shadow-black/20 hover:border-border transition-colors"
     >
       {/* Header */}
       <div className="flex items-center gap-3 p-4">
@@ -393,7 +393,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
           {user && post.author && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="rounded-full p-2 text-muted-foreground transition hover:bg-white/5 hover:text-foreground active:scale-95">
+                <button className="rounded-full p-2 text-muted-foreground transition hover:bg-muted/30 hover:text-foreground active:scale-95">
                   <MoreHorizontal className="h-5 w-5" />
                 </button>
               </DropdownMenuTrigger>
@@ -435,7 +435,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
 
       {/* Comments */}
       {showComments && (
-        <div className="border-t border-white/5 bg-black/20 px-4 py-3 space-y-3">
+        <div className="border-t border-border bg-muted/30 px-4 py-3 space-y-3">
           {comments.length === 0 && (
             <p className="text-sm text-muted-foreground">No comments yet — be the first to hype this flex.</p>
           )}
@@ -450,7 +450,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
                 onClick={() => viewProfile(c.user.username)}
               />
               <div className="min-w-0 flex-1">
-                <div className="rounded-2xl bg-white/5 px-3 py-2">
+                <div className="rounded-2xl bg-muted/30 px-3 py-2">
                   <button
                     onClick={() => viewProfile(c.user.username)}
                     className="mr-1.5 text-sm font-semibold hover:underline"
@@ -487,7 +487,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Add a comment…"
-                  className="min-h-[40px] resize-none bg-white/5 border-white/10"
+                  className="min-h-[40px] resize-none bg-muted/30 border-border"
                   rows={1}
                 />
                 <Button
@@ -506,7 +506,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
 
       {/* Report dialog */}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="max-w-md bg-card border-white/10">
+        <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Flag className="h-5 w-5 text-amber-400" /> Report this post
@@ -522,7 +522,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
                 key={r.value}
                 disabled={reporting}
                 onClick={() => submitReport(r.value)}
-                className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5 text-sm text-left hover:bg-white/10 transition disabled:opacity-50"
+                className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-left hover:bg-muted/50 transition disabled:opacity-50"
               >
                 <span className="text-lg">{r.emoji}</span>
                 <span className="font-medium">{r.label}</span>
@@ -534,7 +534,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
 
       {/* Delete confirmation */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="bg-card border-white/10">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this post?</AlertDialogTitle>
             <AlertDialogDescription>

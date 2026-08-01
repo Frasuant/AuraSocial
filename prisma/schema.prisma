@@ -33,6 +33,8 @@ model User {
   reports       Report[]      @relation("ReportReporter")
   profileViews  ProfileView[] @relation("ProfileViewed")
   viewedProfiles ProfileView[] @relation("ProfileViewer")
+  blocking      Block[]       @relation("BlockBlocker")
+  blockedBy     Block[]       @relation("BlockBlocked")
 }
 
 model Post {
@@ -143,4 +145,16 @@ model ProfileView {
   viewer User @relation("ProfileViewer", fields: [viewerId], references: [id], onDelete: Cascade)
 
   @@unique([viewedId, viewerId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
 }

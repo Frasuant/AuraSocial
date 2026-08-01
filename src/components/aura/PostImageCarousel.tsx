@@ -80,7 +80,7 @@ export function PostImageCarousel({
             }}
             className={cn(
               "h-1.5 rounded-full transition-all",
-              i === index ? "w-5 bg-white" : "w-1.5 bg-white/50 hover:bg-white/70"
+              i === index ? "w-5 bg-white" : "w-1.5 bg-muted/300 hover:bg-white/70"
             )}
             aria-label={`Go to image ${i + 1}`}
           />

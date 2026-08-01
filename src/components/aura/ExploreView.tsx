@@ -120,7 +120,7 @@ export function ExploreView() {
           onFocus={() => query.startsWith("#") && hashtagSuggestions.length > 0 && setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="Search by username, caption, or #hashtag…"
-          className="pl-9 pr-9 bg-white/5 border-white/10"
+          className="pl-9 pr-9 bg-muted/30 border-border"
         />
         {query && (
           <button
@@ -133,8 +133,8 @@ export function ExploreView() {
 
         {/* Hashtag autocomplete dropdown */}
         {showSuggestions && hashtagSuggestions.length > 0 && (
-          <div className="absolute z-30 top-full left-0 right-0 mt-1 rounded-xl border border-white/10 bg-popover/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
-            <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-white/5">
+          <div className="absolute z-30 top-full left-0 right-0 mt-1 rounded-xl border border-border bg-popover/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
+            <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border">
               Hashtags
             </p>
             {hashtagSuggestions.map((s) => (
@@ -145,7 +145,7 @@ export function ExploreView() {
                   setQuery(`#${s.tag}`);
                   setShowSuggestions(false);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition text-left"
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/30 transition text-left"
               >
                 <span className="h-7 w-7 rounded-lg bg-sky-500/15 flex items-center justify-center">
                   <Hash className="h-3.5 w-3.5 text-sky-300" />
@@ -167,7 +167,7 @@ export function ExploreView() {
             <button
               key={tag}
               onClick={() => setQuery(tag)}
-              className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/10 transition"
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition"
             >
               <Hash className="h-3 w-3" /> {tag.slice(1)}
             </button>
@@ -182,7 +182,7 @@ export function ExploreView() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : searchResults!.posts.length === 0 && searchResults!.users.length === 0 ? (
-          <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+          <div className="aura-card rounded-2xl border border-border p-10 text-center">
             <div className="text-4xl mb-2">🔍</div>
             <p className="text-sm text-muted-foreground">
               No results for &ldquo;{query}&rdquo;. Try a different keyword or hashtag.
@@ -233,7 +233,7 @@ export function ExploreView() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : suggested.length === 0 ? (
-            <div className="aura-card rounded-2xl border border-white/5 p-10 text-center text-sm text-muted-foreground">
+            <div className="aura-card rounded-2xl border border-border p-10 text-center text-sm text-muted-foreground">
               You&rsquo;re following everyone. Nice network! 🎉
             </div>
           ) : (
@@ -268,7 +268,7 @@ function UserCard({
 }) {
   const cat = u.bio ? null : null;
   return (
-    <div className="aura-card rounded-2xl border border-white/5 p-4 flex items-center gap-3">
+    <div className="aura-card rounded-2xl border border-border p-4 flex items-center gap-3">
       <Avatar
         username={u.username}
         avatarUrl={u.avatarUrl}

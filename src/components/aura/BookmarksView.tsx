@@ -42,7 +42,7 @@ export function BookmarksView() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : posts.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-5xl mb-3 aura-float">🔖</div>
           <h3 className="font-semibold text-lg">No saved posts yet</h3>
           <p className="text-sm text-muted-foreground mt-1">

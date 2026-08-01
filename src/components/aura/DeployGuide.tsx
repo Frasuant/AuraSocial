@@ -24,10 +24,10 @@ function CodeBlock({ children, id }: { children: string; id: string }) {
     setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <div className="relative rounded-lg bg-black/40 border border-white/10 p-3 font-mono text-xs overflow-x-auto">
+    <div className="relative rounded-lg bg-black/40 border border-border p-3 font-mono text-xs overflow-x-auto">
       <button
         onClick={copy}
-        className="absolute top-2 right-2 rounded-md bg-white/10 p-1.5 hover:bg-white/20"
+        className="absolute top-2 right-2 rounded-md bg-muted/50 p-1.5 hover:bg-white/20"
       >
         {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
       </button>
@@ -41,7 +41,7 @@ export function DeployGuide() {
 
   return (
     <Dialog open={deployOpen} onOpenChange={setDeployOpen}>
-      <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto bg-card border-white/10">
+      <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Rocket className="h-5 w-5 text-amber-300" /> Publish AuraMedia online
@@ -142,7 +142,7 @@ bun run scripts/seed.ts`}</CodeBlock>
               </p>
             </Step>
 
-            <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-xs">
+            <div className="rounded-xl bg-muted/30 border border-border p-3 text-xs">
               <b>Without Turso</b> the app still boots (it auto-copies a bundled seed DB to Vercel's
               <code> /tmp</code> on cold start) so you can browse — but <b>user signups won't persist</b>
               across cold starts. Turso fixes that. It's free and takes 2 minutes.

@@ -82,7 +82,7 @@ export function Feed() {
       {/* Compose */}
       <button
         onClick={() => setCreateOpen(true)}
-        className="aura-card w-full rounded-2xl border border-white/5 p-4 flex items-center gap-3 text-left hover:border-primary/30 transition"
+        className="aura-card w-full rounded-2xl border border-border p-4 flex items-center gap-3 text-left hover:border-primary/30 transition"
       >
         <div className="aura-gradient-bg h-10 w-10 rounded-full flex items-center justify-center text-white font-bold">
           {(user?.username || "?").charAt(0).toUpperCase()}
@@ -99,7 +99,7 @@ export function Feed() {
             "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition border",
             category === ""
               ? "aura-gradient-bg text-white border-transparent"
-              : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+              : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
           )}
         >
           🔥 All
@@ -112,7 +112,7 @@ export function Feed() {
               "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition border",
               category === c.value
                 ? "aura-gradient-bg text-white border-transparent"
-                : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
             )}
           >
             {c.emoji} {c.label}
@@ -124,20 +124,20 @@ export function Feed() {
       {loading ? (
         <div className="space-y-4">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="aura-card rounded-2xl border border-white/5 p-4">
+            <div key={i} className="aura-card rounded-2xl border border-border p-4">
               <div className="flex gap-3">
-                <div className="h-11 w-11 rounded-full bg-white/5 aura-shimmer" />
+                <div className="h-11 w-11 rounded-full bg-muted/30 aura-shimmer" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 w-24 rounded bg-white/5 aura-shimmer" />
-                  <div className="h-3 w-16 rounded bg-white/5 aura-shimmer" />
+                  <div className="h-3 w-24 rounded bg-muted/30 aura-shimmer" />
+                  <div className="h-3 w-16 rounded bg-muted/30 aura-shimmer" />
                 </div>
               </div>
-              <div className="mt-3 h-40 rounded-xl bg-white/5 aura-shimmer" />
+              <div className="mt-3 h-40 rounded-xl bg-muted/30 aura-shimmer" />
             </div>
           ))}
         </div>
       ) : posts.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-5xl mb-3">🎯</div>
           <h3 className="font-semibold text-lg">No flexes here yet</h3>
           <p className="text-sm text-muted-foreground mt-1">

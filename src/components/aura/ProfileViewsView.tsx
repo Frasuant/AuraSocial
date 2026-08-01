@@ -72,7 +72,7 @@ export function ProfileViewsView() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : viewers.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-5xl mb-3 aura-float">👀</div>
           <h3 className="font-semibold text-lg">No views yet</h3>
           <p className="text-sm text-muted-foreground mt-1">
@@ -89,7 +89,7 @@ export function ProfileViewsView() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                className="aura-card rounded-2xl border border-white/5 p-4 flex items-center gap-3"
+                className="aura-card rounded-2xl border border-border p-4 flex items-center gap-3"
               >
                 <Avatar
                   username={v.username}

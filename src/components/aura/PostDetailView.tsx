@@ -125,11 +125,11 @@ export function PostDetailView() {
 
       {/* Original post (if this is a repost) */}
       {post.repostOf && (
-        <div className="ml-4 border-l-2 border-white/10 pl-4">
+        <div className="ml-4 border-l-2 border-border pl-4">
           <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
             <Repeat2 className="h-3 w-3" /> Original post by @{post.repostOf.author.username}
           </p>
-          <div className="aura-card rounded-2xl border border-white/5 p-4">
+          <div className="aura-card rounded-2xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <Avatar
                 username={post.repostOf.author.username}
@@ -167,7 +167,7 @@ export function PostDetailView() {
       )}
 
       {/* Extra stats */}
-      <div className="aura-card rounded-2xl border border-white/5 p-4 grid grid-cols-3 gap-2 text-center">
+      <div className="aura-card rounded-2xl border border-border p-4 grid grid-cols-3 gap-2 text-center">
         <div>
           <p className="text-lg font-bold tabular-nums">{post.likeCount}</p>
           <p className="text-xs text-muted-foreground">Likes</p>
@@ -197,12 +197,12 @@ export function PostDetailView() {
             </button>
           </div>
           {reposts.length === 0 ? (
-            <div className="aura-card rounded-2xl border border-white/5 p-6 text-center text-sm text-muted-foreground">
+            <div className="aura-card rounded-2xl border border-border p-6 text-center text-sm text-muted-foreground">
               No reposts yet. Be the first to share this flex.
             </div>
           ) : (
             reposts.map((r) => (
-              <div key={r.id} className="aura-card rounded-2xl border border-white/5 p-3 flex gap-2.5">
+              <div key={r.id} className="aura-card rounded-2xl border border-border p-3 flex gap-2.5">
                 <Avatar
                   username={r.author.username}
                   avatarUrl={r.author.avatarUrl}
@@ -241,13 +241,13 @@ export function PostDetailView() {
           {comments.length} comment{comments.length !== 1 ? "s" : ""}
         </h3>
         {comments.length === 0 && (
-          <div className="aura-card rounded-2xl border border-white/5 p-8 text-center">
+          <div className="aura-card rounded-2xl border border-border p-8 text-center">
             <div className="text-3xl mb-2">💬</div>
             <p className="text-sm text-muted-foreground">No comments yet. Start the conversation.</p>
           </div>
         )}
         {comments.map((c) => (
-          <div key={c.id} className="aura-card rounded-2xl border border-white/5 p-3 flex gap-2.5">
+          <div key={c.id} className="aura-card rounded-2xl border border-border p-3 flex gap-2.5">
             <Avatar
               username={c.user.username}
               avatarUrl={c.user.avatarUrl}
@@ -284,7 +284,7 @@ export function PostDetailView() {
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
           placeholder="Add a comment…"
-          className="min-h-[44px] resize-none bg-white/5 border-white/10"
+          className="min-h-[44px] resize-none bg-muted/30 border-border"
           rows={1}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

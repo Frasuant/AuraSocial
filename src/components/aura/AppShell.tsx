@@ -105,7 +105,7 @@ export function AppShell() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-3 sm:px-4">
           <button onClick={() => setView("feed")} className="flex items-center gap-2">
             <div className="aura-gradient-bg h-8 w-8 rounded-xl flex items-center justify-center aura-glow">
@@ -124,8 +124,8 @@ export function AppShell() {
             className={cn(
               "relative rounded-full p-2 transition",
               view === "notifications"
-                ? "bg-white/10 text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                ? "bg-muted/50 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
             )}
             aria-label="Notifications"
           >
@@ -147,7 +147,7 @@ export function AppShell() {
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition",
                 view === "admin"
                   ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
-                  : "border border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                  : "border border-border bg-muted/30 text-muted-foreground hover:text-foreground"
               )}
             >
               <ShieldCheck className="h-3.5 w-3.5" /> Admin
@@ -169,7 +169,7 @@ export function AppShell() {
       {/* Body: sidebar + main */}
       <div className="flex-1 mx-auto w-full max-w-6xl flex">
         {/* Desktop sidebar */}
-        <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 border-r border-white/5 py-4 px-3 sticky top-14 h-[calc(100vh-3.5rem)]">
+        <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 border-r border-border py-4 px-3 sticky top-14 h-[calc(100vh-3.5rem)]">
           <nav className="space-y-1">
             {navItems.map((item) => (
               <button
@@ -178,8 +178,8 @@ export function AppShell() {
                 className={cn(
                   "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition relative",
                   view === item.id
-                    ? "bg-white/10 text-foreground"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                    ? "bg-muted/50 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -199,7 +199,7 @@ export function AppShell() {
                     "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
                     view === "admin"
                       ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-200 ring-1 ring-amber-500/30"
-                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                   )}
                 >
                   <ShieldCheck className="h-5 w-5" />
@@ -207,7 +207,7 @@ export function AppShell() {
                 </button>
                 <button
                   onClick={() => setDeployOpen(true)}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-white/5 hover:text-foreground transition"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground transition"
                 >
                   <Rocket className="h-5 w-5 text-amber-300" />
                   Deploy guide
@@ -257,7 +257,7 @@ export function AppShell() {
         {(view === "feed" || view === "discovery" || view === "trending") && (
           <aside className="hidden lg:block w-72 xl:w-80 shrink-0 py-4 px-3 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
             <SuggestedUsersWidget />
-            <div className="mt-4 aura-card rounded-2xl border border-white/5 p-4">
+            <div className="mt-4 aura-card rounded-2xl border border-border p-4">
               <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                 <Flame className="h-4 w-4 text-amber-300" /> Quick stats
               </h3>
@@ -267,7 +267,7 @@ export function AppShell() {
               </p>
               <button
                 onClick={() => setView("activity")}
-                className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition"
+                className="mt-3 w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition"
               >
                 View your activity →
               </button>
@@ -277,7 +277,7 @@ export function AppShell() {
       </div>
 
       {/* Mobile bottom nav — 5 core actions */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/5 bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
         <div className="flex h-16">
           {/* Home */}
           <MobileNavBtn item={navItems[0]} view={view} go={go} />

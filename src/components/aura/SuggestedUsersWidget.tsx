@@ -44,7 +44,7 @@ export function SuggestedUsersWidget() {
   if (loading || users.length === 0) return null;
 
   return (
-    <div className="aura-card rounded-2xl border border-white/5 p-4">
+    <div className="aura-card rounded-2xl border border-border p-4">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-amber-300" />
         <h3 className="text-sm font-semibold">Suggested for you</h3>

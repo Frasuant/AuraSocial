@@ -89,7 +89,7 @@ export function DraftsView() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : drafts.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-5xl mb-3 aura-float">📝</div>
           <h3 className="font-semibold text-lg">No drafts</h3>
           <p className="text-sm text-muted-foreground mt-1">
@@ -106,7 +106,7 @@ export function DraftsView() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                className="aura-card rounded-2xl border border-white/5 p-4"
+                className="aura-card rounded-2xl border border-border p-4"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Avatar
@@ -129,12 +129,12 @@ export function DraftsView() {
                 {d.images && d.images.length > 0 && (
                   <div className="flex gap-1.5 mb-3">
                     {d.images.slice(0, 4).map((img, idx) => (
-                      <div key={idx} className="h-12 w-12 rounded-lg overflow-hidden border border-white/10">
+                      <div key={idx} className="h-12 w-12 rounded-lg overflow-hidden border border-border">
                         <img src={img} alt="" className="h-full w-full object-cover" />
                       </div>
                     ))}
                     {d.images.length > 4 && (
-                      <div className="h-12 w-12 rounded-lg border border-white/10 flex items-center justify-center text-xs text-muted-foreground">
+                      <div className="h-12 w-12 rounded-lg border border-border flex items-center justify-center text-xs text-muted-foreground">
                         +{d.images.length - 4}
                       </div>
                     )}

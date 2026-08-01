@@ -85,6 +85,8 @@ export const aura = {
     api<{ user: AuraUser; posts: Post[] }>(`/api/users/${username}`),
   follow: (username: string) =>
     api<{ following: boolean }>(`/api/users/${username}/follow`, { method: "POST" }),
+  block: (username: string) =>
+    api<{ blocked: boolean }>(`/api/users/${username}/block`, { method: "POST" }),
   followers: (username: string) =>
     api<{ users: AuraUser[] }>(`/api/users/${username}/followers`),
   following: (username: string) =>

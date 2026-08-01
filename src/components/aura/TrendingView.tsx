@@ -40,20 +40,20 @@ export function TrendingView() {
       {loading ? (
         <div className="space-y-4">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="aura-card rounded-2xl border border-white/5 p-4">
+            <div key={i} className="aura-card rounded-2xl border border-border p-4">
               <div className="flex gap-3">
-                <div className="h-11 w-11 rounded-full bg-white/5 aura-shimmer" />
+                <div className="h-11 w-11 rounded-full bg-muted/30 aura-shimmer" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 w-24 rounded bg-white/5 aura-shimmer" />
-                  <div className="h-3 w-16 rounded bg-white/5 aura-shimmer" />
+                  <div className="h-3 w-24 rounded bg-muted/30 aura-shimmer" />
+                  <div className="h-3 w-16 rounded bg-muted/30 aura-shimmer" />
                 </div>
               </div>
-              <div className="mt-3 h-20 rounded-xl bg-white/5 aura-shimmer" />
+              <div className="mt-3 h-20 rounded-xl bg-muted/30 aura-shimmer" />
             </div>
           ))}
         </div>
       ) : posts.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-5xl mb-3 aura-float">🏆</div>
           <h3 className="font-semibold text-lg">No trending posts yet</h3>
           <p className="text-sm text-muted-foreground mt-1">

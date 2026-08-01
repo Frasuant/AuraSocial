@@ -1,13 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarDays, UserMinus, UserPlus, Loader2, Pencil, LogOut, Heart, Grid3x3 } from "lucide-react";
+import { ArrowLeft, CalendarDays, UserMinus, UserPlus, Loader2, Pencil, LogOut, Heart, Grid3x3, Ban, MoreHorizontal } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar } from "./Avatar";
 import { PostCard } from "./PostCard";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn, formatNumber, timeAgo } from "@/lib/utils";
 import type { AuraUser, Post } from "@/lib/types";
@@ -21,6 +37,9 @@ export function ProfileView() {
   const [likedLoading, setLikedLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
 
   useEffect(() => {
     if (!profileUsername) return;
@@ -72,6 +91,26 @@ export function ProfileView() {
     }
   };
 
+  const toggleBlock = async () => {
+    if (!profile) return;
+    setBlockBusy(true);
+    try {
+      const r = await aura.block(profile.username);
+      setBlocked(r.blocked);
+      if (r.blocked) {
+        setProfile({ ...profile, isFollowing: false });
+        toast({ title: "User blocked", description: `@${profile.username} can no longer see or interact with you.` });
+      } else {
+        toast({ title: "User unblocked" });
+      }
+      setBlockOpen(false);
+    } catch (e: any) {
+      toast({ title: "Couldn't block", description: e.message, variant: "destructive" });
+    } finally {
+      setBlockBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-10 flex justify-center">
@@ -100,7 +139,7 @@ export function ProfileView() {
       </button>
 
       {/* Header card */}
-      <div className="aura-card rounded-3xl border border-white/10 overflow-hidden">
+      <div className="aura-card rounded-3xl border border-border overflow-hidden">
         <div className="h-28 aura-gradient-bg relative">
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
@@ -136,27 +175,44 @@ export function ProfileView() {
                   </Button>
                 </>
               ) : (
-                <Button
-                  onClick={follow}
-                  disabled={followLoading}
-                  className={
-                    profile.isFollowing
-                      ? "bg-white/10 text-foreground hover:bg-white/15"
-                      : "aura-gradient-bg text-white hover:opacity-90"
-                  }
-                >
-                  {followLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : profile.isFollowing ? (
-                    <>
-                      <UserMinus className="h-4 w-4 mr-1" /> Following
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="h-4 w-4 mr-1" /> Follow
-                    </>
-                  )}
-                </Button>
+                <>
+                  <Button
+                    onClick={follow}
+                    disabled={followLoading || blocked}
+                    className={
+                      profile.isFollowing
+                        ? "bg-muted/50 text-foreground hover:bg-muted"
+                        : "aura-gradient-bg text-white hover:opacity-90"
+                    }
+                  >
+                    {followLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : profile.isFollowing ? (
+                      <>
+                        <UserMinus className="h-4 w-4 mr-1" /> Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-1" /> Follow
+                      </>
+                    )}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="icon" className="shrink-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        onClick={() => setBlockOpen(true)}
+                        className="text-rose-300 focus:text-rose-200 focus:bg-rose-500/10 cursor-pointer"
+                      >
+                        <Ban className="h-4 w-4 mr-2" /> {blocked ? "Unblock user" : "Block user"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               )}
             </div>
           </div>
@@ -219,7 +275,7 @@ export function ProfileView() {
 
           <TabsContent value="posts" className="mt-4 space-y-4">
             {posts.length === 0 ? (
-              <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+              <div className="aura-card rounded-2xl border border-border p-10 text-center">
                 <div className="text-4xl mb-2">📸</div>
                 <p className="text-sm text-muted-foreground">
                   {isMe ? "You haven't posted yet. Drop your first flex!" : "No posts to show yet."}
@@ -236,7 +292,7 @@ export function ProfileView() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : likedPosts.length === 0 ? (
-              <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+              <div className="aura-card rounded-2xl border border-border p-10 text-center">
                 <div className="text-4xl mb-2">💛</div>
                 <p className="text-sm text-muted-foreground">
                   {isMe ? "You haven't liked any posts yet. Go hype some flexes!" : "No liked posts to show."}
@@ -248,6 +304,30 @@ export function ProfileView() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Block confirmation dialog */}
+      <AlertDialog open={blockOpen} onOpenChange={setBlockOpen}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{blocked ? "Unblock" : "Block"} @{profile?.username}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {blocked
+                ? "They will be able to see your posts, follow you, and interact with you again."
+                : "They won't be able to see your posts, follow you, or message you. You also unfollow each other. You can undo this anytime."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={blockBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={toggleBlock}
+              disabled={blockBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {blockBusy ? "…" : blocked ? "Unblock" : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

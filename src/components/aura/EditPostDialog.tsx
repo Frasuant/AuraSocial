@@ -95,7 +95,7 @@ export function EditPostDialog() {
 
   return (
     <Dialog open={editPostOpen} onOpenChange={(o) => !o && closeEditPost()}>
-      <DialogContent className="max-w-lg bg-card border-white/10">
+      <DialogContent className="max-w-lg bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Pencil className="h-4 w-4 text-amber-300" />
@@ -119,7 +119,7 @@ export function EditPostDialog() {
                     "rounded-full px-3 py-1.5 text-sm font-medium border transition",
                     category === c.value
                       ? "aura-gradient-bg text-white border-transparent"
-                      : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                      : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {c.emoji} {c.label}
@@ -133,7 +133,7 @@ export function EditPostDialog() {
             <Textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              className="min-h-[120px] resize-none bg-white/5 border-white/10"
+              className="min-h-[120px] resize-none bg-muted/30 border-border"
               maxLength={2000}
             />
             <div className="mt-1 text-right text-xs text-muted-foreground">
@@ -148,7 +148,7 @@ export function EditPostDialog() {
                 {images.map((url, idx) => (
                   <div
                     key={idx}
-                    className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group"
+                    className="relative aspect-square rounded-xl overflow-hidden border border-border group"
                   >
                     <img src={url} alt="" className="h-full w-full object-cover" />
                     <button
@@ -165,7 +165,7 @@ export function EditPostDialog() {
                   </div>
                 ))}
                 {images.length < MAX_IMAGES && (
-                  <label className="aspect-square rounded-xl border border-dashed border-white/15 bg-white/5 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/10 transition">
+                  <label className="aspect-square rounded-xl border border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-muted/50 transition">
                     {uploading ? (
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     ) : (
@@ -190,7 +190,7 @@ export function EditPostDialog() {
               </p>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/5 py-8 cursor-pointer hover:bg-white/10 transition">
+            <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 py-8 cursor-pointer hover:bg-muted/50 transition">
               {uploading ? (
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               ) : (
@@ -213,7 +213,7 @@ export function EditPostDialog() {
           )}
 
           {/* AuraGuard notice */}
-          <div className="flex items-start gap-2 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5 text-xs text-muted-foreground">
+          <div className="flex items-start gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
             <span>
               Editing re-runs <b className="text-foreground">AuraGuard AI</b>. If the new caption is

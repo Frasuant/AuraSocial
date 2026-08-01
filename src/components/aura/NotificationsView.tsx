@@ -115,7 +115,7 @@ export function NotificationsView() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : items.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-5xl mb-3 aura-float">🔔</div>
           <h3 className="font-semibold">All quiet for now</h3>
           <p className="text-sm text-muted-foreground mt-1">
@@ -132,7 +132,7 @@ export function NotificationsView() {
               transition={{ delay: Math.min(i * 0.03, 0.3) }}
               className={cn(
                 "aura-card rounded-2xl border p-3 flex items-center gap-3 transition",
-                n.read ? "border-white/5" : "border-amber-500/30 bg-amber-500/[0.04]"
+                n.read ? "border-border" : "border-amber-500/30 bg-amber-500/[0.04]"
               )}
             >
               <div className="relative shrink-0">

@@ -81,7 +81,7 @@ export function ActivityView() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : items.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-5xl mb-3 aura-float">📊</div>
           <h3 className="font-semibold text-lg">No activity yet</h3>
           <p className="text-sm text-muted-foreground mt-1">
@@ -98,7 +98,7 @@ export function ActivityView() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                className="aura-card rounded-2xl border border-white/5 p-3 flex items-start gap-3"
+                className="aura-card rounded-2xl border border-border p-3 flex items-start gap-3"
               >
                 <div className="relative shrink-0">
                   <Avatar

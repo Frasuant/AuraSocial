@@ -112,7 +112,7 @@ function DashboardTab() {
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cards.map((c) => (
-          <div key={c.label} className="aura-card rounded-2xl border border-white/5 p-4">
+          <div key={c.label} className="aura-card rounded-2xl border border-border p-4">
             <div className={cn("h-9 w-9 rounded-xl bg-gradient-to-br flex items-center justify-center mb-2", c.color)}>
               <c.icon className="h-4.5 w-4.5 text-white" />
             </div>
@@ -122,7 +122,7 @@ function DashboardTab() {
         ))}
       </div>
 
-      <div className="aura-card rounded-2xl border border-white/5 p-5">
+      <div className="aura-card rounded-2xl border border-border p-5">
         <h3 className="font-semibold mb-3 flex items-center gap-2">
           <ShieldAlert className="h-4 w-4 text-amber-400" /> Recent AuraGuard flags
         </h3>
@@ -131,7 +131,7 @@ function DashboardTab() {
         ) : (
           <ul className="space-y-2">
             {data.recentFlags.map((f: any) => (
-              <li key={f.id} className="rounded-xl bg-white/5 p-3">
+              <li key={f.id} className="rounded-xl bg-muted/30 p-3">
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                   <span>@{f.author.username} · {categoryMeta(f.category).emoji} {categoryMeta(f.category).label}</span>
                   <span>risk {f.risk}/100 · {timeAgo(f.createdAt)}</span>
@@ -188,10 +188,10 @@ function UsersTab() {
     );
 
   return (
-    <div className="aura-card rounded-2xl border border-white/5 overflow-hidden">
+    <div className="aura-card rounded-2xl border border-border overflow-hidden">
       <div className="max-h-[70vh] overflow-y-auto divide-y divide-white/5">
         {users.map((u) => (
-          <div key={u.id} className="flex items-center gap-3 p-3 hover:bg-white/5">
+          <div key={u.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
             <Avatar
               username={u.username}
               avatarUrl={u.avatarUrl}
@@ -309,7 +309,7 @@ function QueueTab() {
               "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium border transition",
               status === t.value
                 ? "aura-gradient-bg text-white border-transparent"
-                : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
             )}
           >
             {t.label}
@@ -322,7 +322,7 @@ function QueueTab() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : posts.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-4xl mb-2">✨</div>
           <p className="text-sm text-muted-foreground">Nothing in this queue.</p>
         </div>
@@ -331,7 +331,7 @@ function QueueTab() {
           {posts.map((p) => {
             const cat = categoryMeta(p.category);
             return (
-              <div key={p.id} className="aura-card rounded-2xl border border-white/5 p-4">
+              <div key={p.id} className="aura-card rounded-2xl border border-border p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Avatar
                     username={p.author?.username || "?"}
@@ -416,7 +416,7 @@ function SettingsTab() {
   };
 
   return (
-    <div className="aura-card rounded-2xl border border-white/5 p-6 max-w-md">
+    <div className="aura-card rounded-2xl border border-border p-6 max-w-md">
       <h3 className="font-semibold mb-1">Change Admin password</h3>
       <p className="text-sm text-muted-foreground mb-4">
         Update the Admin account credentials. The change takes effect immediately.
@@ -429,7 +429,7 @@ function SettingsTab() {
             type="password"
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
-            className="bg-white/5 border-white/10"
+            className="bg-muted/30 border-border"
           />
         </div>
         <div className="space-y-1.5">
@@ -439,7 +439,7 @@ function SettingsTab() {
             type="password"
             value={next}
             onChange={(e) => setNext(e.target.value)}
-            className="bg-white/5 border-white/10"
+            className="bg-muted/30 border-border"
           />
         </div>
         <div className="space-y-1.5">
@@ -449,7 +449,7 @@ function SettingsTab() {
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="bg-white/5 border-white/10"
+            className="bg-muted/30 border-border"
           />
         </div>
         <Button onClick={save} disabled={saving} className="w-full aura-gradient-bg text-white hover:opacity-90">
@@ -507,7 +507,7 @@ function DbStatusBanner() {
           <p className={cn("font-semibold", ok ? "text-emerald-300" : "text-amber-300")}>
             {ok ? "Database: persistent" : "Database: NOT persistent"}
           </p>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-muted-foreground">
+          <span className="rounded-full bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
             {backendLabel}
           </span>
         </div>
@@ -578,7 +578,7 @@ function ReportsTab() {
         auto-hide). Review and decide: restore or remove.
       </div>
       {reports.length === 0 ? (
-        <div className="aura-card rounded-2xl border border-white/5 p-10 text-center">
+        <div className="aura-card rounded-2xl border border-border p-10 text-center">
           <div className="text-4xl mb-2">🤝</div>
           <p className="text-sm text-muted-foreground">No community reports. Clean community!</p>
         </div>
@@ -586,7 +586,7 @@ function ReportsTab() {
         reports.map((r) => {
           const cat = categoryMeta(r.post.category);
           return (
-            <div key={r.post.id} className="aura-card rounded-2xl border border-white/5 p-4">
+            <div key={r.post.id} className="aura-card rounded-2xl border border-border p-4">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Avatar
                   username={r.post.author.username}
@@ -607,7 +607,7 @@ function ReportsTab() {
                   <AlertTriangle className="h-3 w-3" /> {r.reportCount} report{r.reportCount > 1 ? "s" : ""}
                 </span>
                 {Object.entries(r.reasons).map(([reason, count]: [string, any]) => (
-                  <span key={reason} className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-muted-foreground">
+                  <span key={reason} className="rounded-full bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground">
                     {reason} ×{count}
                   </span>
                 ))}

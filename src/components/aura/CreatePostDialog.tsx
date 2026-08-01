@@ -166,7 +166,7 @@ export function CreatePostDialog() {
 
   return (
     <Dialog open={createOpen} onOpenChange={(o) => (o ? setCreateOpen(true) : close())}>
-      <DialogContent className="max-w-lg bg-card border-white/10">
+      <DialogContent className="max-w-lg bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="aura-gradient-text">New Flex</span>
@@ -189,7 +189,7 @@ export function CreatePostDialog() {
                     "rounded-full px-3 py-1.5 text-sm font-medium border transition",
                     category === c.value
                       ? "aura-gradient-bg text-white border-transparent"
-                      : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                      : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {c.emoji} {c.label}
@@ -206,7 +206,7 @@ export function CreatePostDialog() {
               onChange={(e) => setCaption(e.target.value)}
               onBlur={() => setTimeout(() => setShowHashtagSuggestions(false), 150)}
               placeholder={`What are you flexing today, ${user?.username}? Use #hashtags to get discovered.`}
-              className="min-h-[120px] resize-none bg-white/5 border-white/10"
+              className="min-h-[120px] resize-none bg-muted/30 border-border"
               maxLength={2000}
             />
             <div className="mt-1 text-right text-xs text-muted-foreground">
@@ -215,8 +215,8 @@ export function CreatePostDialog() {
 
             {/* Hashtag suggestions dropdown */}
             {showHashtagSuggestions && hashtagSuggestions.length > 0 && (
-              <div className="absolute z-30 bottom-full left-0 right-0 mb-1 rounded-xl border border-white/10 bg-popover/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
-                <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-white/5">
+              <div className="absolute z-30 bottom-full left-0 right-0 mb-1 rounded-xl border border-border bg-popover/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
+                <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border">
                   Suggested hashtags
                 </p>
                 {hashtagSuggestions.map((s) => (
@@ -226,7 +226,7 @@ export function CreatePostDialog() {
                       e.preventDefault();
                       insertHashtag(s.tag);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/30 transition text-left"
                   >
                     <span className="h-7 w-7 rounded-lg bg-sky-500/15 flex items-center justify-center">
                       <Hash className="h-3.5 w-3.5 text-sky-300" />
@@ -246,7 +246,7 @@ export function CreatePostDialog() {
                 {images.map((url, idx) => (
                   <div
                     key={idx}
-                    className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group"
+                    className="relative aspect-square rounded-xl overflow-hidden border border-border group"
                   >
                     <img src={url} alt="" className="h-full w-full object-cover" />
                     <button
@@ -263,7 +263,7 @@ export function CreatePostDialog() {
                   </div>
                 ))}
                 {images.length < MAX_IMAGES && (
-                  <label className="aspect-square rounded-xl border border-dashed border-white/15 bg-white/5 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-white/10 transition">
+                  <label className="aspect-square rounded-xl border border-dashed border-border bg-muted/30 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-muted/50 transition">
                     {uploading ? (
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     ) : (
@@ -288,7 +288,7 @@ export function CreatePostDialog() {
               </p>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/5 py-8 cursor-pointer hover:bg-white/10 transition">
+            <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 py-8 cursor-pointer hover:bg-muted/50 transition">
               {uploading ? (
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               ) : (
@@ -311,7 +311,7 @@ export function CreatePostDialog() {
           )}
 
           {/* AuraGuard notice */}
-          <div className="flex items-start gap-2 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5 text-xs text-muted-foreground">
+          <div className="flex items-start gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
             <span>
               <b className="text-foreground">AuraGuard AI</b> scans every post for scams, illegal
