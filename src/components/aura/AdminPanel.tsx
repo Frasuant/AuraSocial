@@ -27,6 +27,16 @@ import { Label } from "@/components/ui/label";
 import { categoryMeta } from "@/lib/constants";
 import { cn, timeAgo, formatNumber } from "@/lib/utils";
 import type { AuraUser, Post } from "@/lib/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function AdminPanel() {
   const { setDeployOpen } = useApp();
@@ -153,6 +163,8 @@ function UsersTab() {
   const [users, setUsers] = useState<AuraUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = () =>
     aura
@@ -180,6 +192,24 @@ function UsersTab() {
     }
   };
 
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    setDeleteBusy(true);
+    try {
+      const r = await aura.adminDeleteUser(deletingId);
+      setUsers((list) => list.filter((u) => u.id !== deletingId));
+      toast({
+        title: "Account deleted 🗑",
+        description: `@${r.deletedUsername} and all their posts are gone.`,
+      });
+      setDeletingId(null);
+    } catch (e: any) {
+      toast({ title: "Couldn't delete", description: e.message, variant: "destructive" });
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   if (loading)
     return (
       <div className="flex justify-center py-10">
@@ -187,62 +217,100 @@ function UsersTab() {
       </div>
     );
 
+  const deletingUser = users.find((u) => u.id === deletingId);
+
   return (
-    <div className="aura-card rounded-2xl border border-border overflow-hidden">
-      <div className="max-h-[70vh] overflow-y-auto divide-y divide-white/5">
-        {users.map((u) => (
-          <div key={u.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
-            <Avatar
-              username={u.username}
-              avatarUrl={u.avatarUrl}
-              avatarColor={u.avatarColor}
-              isVerified={u.isVerified}
-              size="md"
-              onClick={() => viewProfile(u.username)}
-            />
-            <div className="min-w-0 flex-1">
-              <button
+    <>
+      <div className="aura-card rounded-2xl border border-border overflow-hidden">
+        <div className="max-h-[70vh] overflow-y-auto divide-y divide-border">
+          {users.map((u) => (
+            <div key={u.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
+              <Avatar
+                username={u.username}
+                avatarUrl={u.avatarUrl}
+                avatarColor={u.avatarColor}
+                isVerified={u.isVerified}
+                size="md"
                 onClick={() => viewProfile(u.username)}
-                className="flex items-center gap-1 font-semibold hover:underline truncate"
+              />
+              <div className="min-w-0 flex-1">
+                <button
+                  onClick={() => viewProfile(u.username)}
+                  className="flex items-center gap-1 font-semibold hover:underline truncate"
+                >
+                  <span className="truncate">{u.username}</span>
+                  {u.isVerified && (
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 verified-badge shrink-0">
+                      <path fill="oklch(0.78 0.2 60)" d="M12 1.5l2.4 1.8 3 .1 1 2.8 2.4 1.8-1 2.8 1 2.8-2.4 1.8-1 2.8-3 .1L12 22.5l-2.4-1.8-3-.1-1-2.8L3.2 16l1-2.8-1-2.8 2.4-1.8 1-2.8 3-.1L12 1.5z" />
+                      <path fill="oklch(0.13 0.02 290)" d="M10.6 14.6l-2.3-2.3 1.4-1.4 1 1 3.2-3.2 1.4 1.4-4.7 4.5z" />
+                    </svg>
+                  )}
+                  {u.isAdmin && (
+                    <span className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      Admin
+                    </span>
+                  )}
+                </button>
+                <p className="text-xs text-muted-foreground truncate">
+                  {u.email} · {u.postCount} posts · {u.followerCount} followers
+                </p>
+              </div>
+              <Button
+                size="sm"
+                disabled={toggling === u.id || u.isAdmin}
+                variant={u.isVerified ? "secondary" : "default"}
+                onClick={() => toggleVerify(u)}
+                className={u.isVerified ? "" : "aura-gradient-bg text-white hover:opacity-90"}
               >
-                <span className="truncate">{u.username}</span>
-                {u.isVerified && (
-                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 verified-badge shrink-0">
-                    <path fill="oklch(0.78 0.2 60)" d="M12 1.5l2.4 1.8 3 .1 1 2.8 2.4 1.8-1 2.8 1 2.8-2.4 1.8-1 2.8-3 .1L12 22.5l-2.4-1.8-3-.1-1-2.8L3.2 16l1-2.8-1-2.8 2.4-1.8 1-2.8 3-.1L12 1.5z" />
-                    <path fill="oklch(0.13 0.02 290)" d="M10.6 14.6l-2.3-2.3 1.4-1.4 1 1 3.2-3.2 1.4 1.4-4.7 4.5z" />
-                  </svg>
+                {toggling === u.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : u.isVerified ? (
+                  <>
+                    <Check className="h-4 w-4 mr-1" /> Verified
+                  </>
+                ) : (
+                  "Verify"
                 )}
-                {u.isAdmin && (
-                  <span className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                    Admin
-                  </span>
-                )}
-              </button>
-              <p className="text-xs text-muted-foreground truncate">
-                {u.email} · {u.postCount} posts · {u.followerCount} followers
-              </p>
-            </div>
-            <Button
-              size="sm"
-              disabled={toggling === u.id || u.isAdmin}
-              variant={u.isVerified ? "secondary" : "default"}
-              onClick={() => toggleVerify(u)}
-              className={u.isVerified ? "" : "aura-gradient-bg text-white hover:opacity-90"}
-            >
-              {toggling === u.id ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : u.isVerified ? (
-                <>
-                  <Check className="h-4 w-4 mr-1" /> Verified
-                </>
-              ) : (
-                "Verify"
+              </Button>
+              {!u.isAdmin && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setDeletingId(u.id)}
+                  className="text-rose-300 hover:bg-rose-500/10 hover:text-rose-200 shrink-0"
+                  title="Delete account"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               )}
-            </Button>
-          </div>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+
+      {/* Delete user confirmation */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete @{deletingUser?.username}&rsquo;s account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the account AND all their posts, likes, comments, follows,
+              bookmarks, and reports. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteBusy ? "Deleting…" : "Delete account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
