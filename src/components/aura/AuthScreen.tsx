@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Sparkles, Flame, Trophy, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
 import { useToast } from "@/hooks/use-toast";
-// NOTE: Admin credentials are NEVER shown publicly. The platform owner logs in with
-// credentials provided only in the private handover/worklog, then changes them in Admin → Settings.
+import { RECAPTCHA_SITE_KEY } from "@/lib/recaptcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,29 +26,106 @@ export function AuthScreen() {
   const [regEmail, setRegEmail] = useState("");
   const [regPw, setRegPw] = useState("");
 
+  // reCAPTCHA tokens
+  const [loginToken, setLoginToken] = useState<string | null>(null);
+  const [regToken, setRegToken] = useState<string | null>(null);
+
+  // reCAPTCHA widget IDs (to reset them)
+  const loginWidgetId = useRef<number | null>(null);
+  const regWidgetId = useRef<number | null>(null);
+
+  // Render reCAPTCHA into a div
+  const renderRecaptcha = useCallback((elementId: string, callback: (token: string) => void) => {
+    const w = window as any;
+    if (w.grecaptcha && w.grecaptcha.render) {
+      try {
+        const id = w.grecaptcha.render(elementId, {
+          sitekey: RECAPTCHA_SITE_KEY,
+          callback: callback,
+          theme: "dark",
+        });
+        return id;
+      } catch {
+        // Already rendered — reset
+        if (w.grecaptcha.reset) w.grecaptcha.reset();
+        return null;
+      }
+    }
+    return null;
+  }, []);
+
+  // Expose render functions to be called when a tab is activated
+  const onLoginTabActivate = useCallback(() => {
+    setTimeout(() => {
+      if (loginWidgetId.current === null) {
+        const el = document.getElementById("login-recaptcha");
+        if (el && el.innerHTML === "") {
+          loginWidgetId.current = renderRecaptcha("login-recaptcha", (token: string) => setLoginToken(token));
+        }
+      }
+    }, 100);
+  }, [renderRecaptcha]);
+
+  const onRegisterTabActivate = useCallback(() => {
+    setTimeout(() => {
+      if (regWidgetId.current === null) {
+        const el = document.getElementById("register-recaptcha");
+        if (el && el.innerHTML === "") {
+          regWidgetId.current = renderRecaptcha("register-recaptcha", (token: string) => setRegToken(token));
+        }
+      }
+    }, 100);
+  }, [renderRecaptcha]);
+
+  const resetLoginCaptcha = () => {
+    const w = window as any;
+    if (w.grecaptcha && loginWidgetId.current !== null) {
+      try { w.grecaptcha.reset(loginWidgetId.current); } catch {}
+    }
+    setLoginToken(null);
+  };
+
+  const resetRegCaptcha = () => {
+    const w = window as any;
+    if (w.grecaptcha && regWidgetId.current !== null) {
+      try { w.grecaptcha.reset(regWidgetId.current); } catch {}
+    }
+    setRegToken(null);
+  };
+
   const doLogin = async () => {
+    if (!loginToken) {
+      toast({ title: "Please complete the reCAPTCHA", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
-      await aura.login({ identifier: loginId, password: loginPw });
+      await aura.login({ identifier: loginId, password: loginPw, recaptchaToken: loginToken });
       const { user } = await aura.me();
       setUser(user);
       toast({ title: `Welcome back, ${user?.username}!`, description: "Let's flex. 🔥" });
     } catch (e: any) {
       toast({ title: "Login failed", description: e.message, variant: "destructive" });
+      resetLoginCaptcha();
     } finally {
       setLoading(false);
     }
   };
 
   const doRegister = async () => {
+    if (!regToken) {
+      toast({ title: "Please complete the reCAPTCHA", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
-      await aura.register({ username: regName, email: regEmail, password: regPw });
+      await aura.register({ username: regName, email: regEmail, password: regPw, recaptchaToken: regToken });
       const { user } = await aura.me();
       setUser(user);
       toast({ title: `Welcome to AuraMedia, ${user?.username}!`, description: "Your grind starts now." });
     } catch (e: any) {
       toast({ title: "Sign up failed", description: e.message, variant: "destructive" });
+      resetRegCaptcha();
     } finally {
       setLoading(false);
     }
@@ -100,10 +176,10 @@ export function AuthScreen() {
               </div>
             </div>
 
-            <Tabs defaultValue="login">
+            <Tabs defaultValue="login" onValueChange={(v) => v === "login" ? onLoginTabActivate() : onRegisterTabActivate()}>
               <TabsList className="grid w-full grid-cols-2 mb-5">
-                <TabsTrigger value="login">Log in</TabsTrigger>
-                <TabsTrigger value="register">Sign up</TabsTrigger>
+                <TabsTrigger value="login" onClick={onLoginTabActivate}>Log in</TabsTrigger>
+                <TabsTrigger value="register" onClick={onRegisterTabActivate}>Sign up</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login" className="space-y-4">
@@ -137,7 +213,9 @@ export function AuthScreen() {
                     </button>
                   </div>
                 </div>
-                <Button onClick={doLogin} disabled={loading} className="w-full aura-gradient-bg text-white hover:opacity-90">
+                {/* reCAPTCHA */}
+                <div id="login-recaptcha" className="flex justify-center" ref={(el) => { if (el && el.innerHTML === "") onLoginTabActivate(); }}></div>
+                <Button onClick={doLogin} disabled={loading || !loginToken} className="w-full aura-gradient-bg text-white hover:opacity-90">
                   {loading ? "Logging in…" : "Log in"}
                 </Button>
               </TabsContent>
@@ -174,7 +252,9 @@ export function AuthScreen() {
                     onKeyDown={(e) => e.key === "Enter" && doRegister()}
                   />
                 </div>
-                <Button onClick={doRegister} disabled={loading} className="w-full aura-gradient-bg text-white hover:opacity-90">
+                {/* reCAPTCHA */}
+                <div id="register-recaptcha" className="flex justify-center" ref={(el) => { if (el && el.innerHTML === "") onRegisterTabActivate(); }}></div>
+                <Button onClick={doRegister} disabled={loading || !regToken} className="w-full aura-gradient-bg text-white hover:opacity-90">
                   {loading ? "Creating account…" : "Create account"}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">

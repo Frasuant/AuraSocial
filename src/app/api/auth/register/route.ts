@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { createSession, getSessionUser, hashPassword } from "@/lib/auth";
 import { AVATAR_COLORS } from "@/lib/constants";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
 export async function POST(req: Request) {
   try {
@@ -14,9 +15,15 @@ export async function POST(req: Request) {
     const username = String(body.username || "").trim().toLowerCase();
     const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "");
+    const recaptchaToken = String(body.recaptchaToken || "");
 
     if (!username || !email || !password)
       return NextResponse.json({ error: "All fields are required." }, { status: 400 });
+
+    // Verify reCAPTCHA
+    const recaptchaOk = await verifyRecaptcha(recaptchaToken);
+    if (!recaptchaOk)
+      return NextResponse.json({ error: "reCAPTCHA verification failed. Please try again." }, { status: 403 });
 
     // Username validation (like Instagram/X):
     // - 3 to 35 characters

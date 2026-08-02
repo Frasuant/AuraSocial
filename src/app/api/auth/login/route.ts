@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createSession, verifyPassword } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
 export async function POST(req: Request) {
   try {
@@ -12,9 +13,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     const identifier = String(body.identifier || "").trim().toLowerCase();
     const password = String(body.password || "");
+    const recaptchaToken = String(body.recaptchaToken || "");
 
     if (!identifier || !password)
       return NextResponse.json({ error: "Enter your username and password." }, { status: 400 });
+
+    // Verify reCAPTCHA
+    const recaptchaOk = await verifyRecaptcha(recaptchaToken);
+    if (!recaptchaOk)
+      return NextResponse.json({ error: "reCAPTCHA verification failed. Please try again." }, { status: 403 });
 
     const user = await db.user.findFirst({
       where: { OR: [{ username: identifier }, { email: identifier.toLowerCase() }] },

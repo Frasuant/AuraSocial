@@ -20,9 +20,9 @@ async function api<T = any>(
 
 export const aura = {
   // Auth
-  register: (body: { username: string; email: string; password: string }) =>
+  register: (body: { username: string; email: string; password: string; recaptchaToken: string }) =>
     api<{ ok: boolean }>("/api/auth/register", { method: "POST", body: JSON.stringify(body) }),
-  login: (body: { identifier: string; password: string }) =>
+  login: (body: { identifier: string; password: string; recaptchaToken: string }) =>
     api<{ ok: boolean }>("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
   logout: () => api<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   me: () => api<{ user: AuraUser | null }>("/api/auth/me"),
