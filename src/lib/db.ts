@@ -1,4 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
+import { randomUUID } from "crypto";
 
 /**
  * AuraMedia database — Turso (libSQL) cloud database.
@@ -198,6 +199,14 @@ function serializeVal(val: any): any {
   return val;
 }
 
+// Generate a CUID-like ID (replaces Prisma's @default(cuid()))
+function generateId(): string {
+  return "c" + randomUUID().replace(/-/g, "").slice(0, 24);
+}
+
+// Tables that have an updatedAt column (Prisma's @updatedAt)
+const TABLES_WITH_UPDATED_AT = new Set(["User", "Post"]);
+
 // ── Include resolver ─────────────────────────────────────────────────────
 
 async function resolveIncludes(
@@ -366,8 +375,17 @@ function createModel(tableName: string) {
     },
 
     async create(opts: { data: any; include?: any; select?: any }) {
-      const keys = Object.keys(opts.data);
-      const values = Object.values(opts.data).map(serializeVal);
+      // Auto-generate ID if not provided (replaces Prisma's @default(cuid()))
+      const data = { ...opts.data };
+      if (!data.id) {
+        data.id = generateId();
+      }
+      // Auto-set timestamps (replaces Prisma's @default(now()) and @updatedAt)
+      const now = new Date().toISOString();
+      if (!data.createdAt) data.createdAt = now;
+      if (TABLES_WITH_UPDATED_AT.has(tableName) && !data.updatedAt) data.updatedAt = now;
+      const keys = Object.keys(data);
+      const values = Object.values(data).map(serializeVal);
       const placeholders = keys.map(() => "?").join(", ");
       const cols = keys.map((k) => `"${k}"`).join(", ");
       const sql = `INSERT INTO "${tableName}" (${cols}) VALUES (${placeholders}) RETURNING *`;
@@ -382,9 +400,12 @@ function createModel(tableName: string) {
     async update(opts: { where: any; data: any; include?: any; select?: any }) {
       const w = buildWhere(opts.where);
       if (!w.sql) throw new Error("update requires a where clause");
+      const data = { ...opts.data };
+      // Auto-update the updatedAt timestamp (replaces Prisma's @updatedAt)
+      if (TABLES_WITH_UPDATED_AT.has(tableName)) data.updatedAt = new Date().toISOString();
       const sets: string[] = [];
       const args: any[] = [];
-      for (const [key, val] of Object.entries(opts.data)) {
+      for (const [key, val] of Object.entries(data)) {
         sets.push(`"${key}" = ?`);
         args.push(serializeVal(val));
       }
@@ -425,9 +446,11 @@ function createModel(tableName: string) {
 
     async updateMany(opts: { where?: any; data: any }) {
       const w = buildWhere(opts.where);
+      const data = { ...opts.data };
+      if (TABLES_WITH_UPDATED_AT.has(tableName)) data.updatedAt = new Date().toISOString();
       const sets: string[] = [];
       const args: any[] = [];
-      for (const [key, val] of Object.entries(opts.data)) {
+      for (const [key, val] of Object.entries(data)) {
         sets.push(`"${key}" = ?`);
         args.push(serializeVal(val));
       }
