@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { moderateImage } from "@/lib/moderation";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
 
 export async function POST(req: Request) {
   try {
@@ -21,16 +18,13 @@ export async function POST(req: Request) {
     if (!imgCheck.approved)
       return NextResponse.json({ error: imgCheck.reason }, { status: 400 });
 
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const allowed = ["jpg", "jpeg", "png", "webp", "gif", "avif"];
-    const safeExt = allowed.includes(ext) ? ext : "jpg";
-    const name = `${randomUUID()}.${safeExt}`;
-    const dir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(dir, { recursive: true });
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(dir, name), buffer);
+    // Convert file to base64 data URL — no filesystem needed (works on Vercel)
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    return NextResponse.json({ url: `/uploads/${name}` });
+    return NextResponse.json({ url: dataUrl });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Server error" }, { status: 500 });
   }
