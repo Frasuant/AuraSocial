@@ -58,6 +58,10 @@ export function CreatePostDialog() {
       toast({ title: `Max ${MAX_IMAGES} images`, variant: "destructive" });
       return;
     }
+    if (file.size > 4 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Max 4MB per image.", variant: "destructive" });
+      return;
+    }
     setUploading(true);
     try {
       const r = await aura.upload(file);

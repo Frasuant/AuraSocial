@@ -4,10 +4,12 @@ async function api<T = any>(
   url: string,
   options?: RequestInit
 ): Promise<T> {
+  const isFormData = options?.body instanceof FormData;
   const res = await fetch(url, {
     ...options,
     headers: {
-      ...(options?.body ? { "Content-Type": "application/json" } : {}),
+      // Don't set Content-Type for FormData — the browser sets it automatically with the correct boundary
+      ...(options?.body && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...options?.headers,
     },
   });

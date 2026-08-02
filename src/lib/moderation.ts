@@ -554,8 +554,8 @@ export function moderateImage(
   }
 
   // Check file size (max 6MB)
-  if (fileSize > 6 * 1024 * 1024) {
-    return { approved: false, reason: "Image must be under 6MB." };
+  if (fileSize > 4 * 1024 * 1024) {
+    return { approved: false, reason: "Image must be under 4MB." };
   }
 
   // Check for suspicious file names
