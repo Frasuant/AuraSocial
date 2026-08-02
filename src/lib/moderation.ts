@@ -1,5 +1,3 @@
-import ZAI from "z-ai-web-dev-sdk";
-
 export interface ModerationResult {
   approved: boolean;
   risk: number;
@@ -20,25 +18,50 @@ const SAFE: ModerationResult = {
   flexScore: 50,
 };
 
-// Hardcoded z-ai SDK config (so it works on Vercel where .z-ai-config file doesn't exist)
-const ZAI_CONFIG = {
-  baseUrl: "https://internal-api.z.ai/v1",
-  apiKey: "Z.ai",
-  chatId: "chat-7e5ab694-8576-4a50-b658-5b4bc1c7802a",
-  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNmRmYTU3OGMtMmJlMi00ZDNmLTlkNzMtMzA1MTA0MTdhMWE0IiwiY2hhdF9pZCI6ImNoYXQtN2U1YWI2OTQtODU3Ni00YTUwLWI2NTgtNWI0YmMxYzc4MDJhIiwicGxhdGZvcm0iOiJ6YWkifQ.r_ysyrQhuI3CrUc7aLM1gc4xPItX-Co_ib5Zged7MZM",
-  userId: "6dfa578c-2be2-4d3f-9d73-30510417a1a4",
-};
-
-let zaiInstance: any = null;
+// Hardcoded z-ai API config
+const ZAI_BASE_URL = "https://internal-api.z.ai/v1";
+const ZAI_API_KEY = "Z.ai";
+const ZAI_CHAT_ID = "chat-7e5ab694-8576-4a50-b658-5b4bc1c7802a";
+const ZAI_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNmRmYTU3OGMtMmJlMi00ZDNmLTlkNzMtMzA1MTA0MTdhMWE0IiwiY2hhdF9pZCI6ImNoYXQtN2U1YWI2OTQtODU3Ni00YTUwLWI2NTgtNWI0YmMxYzc4MDJhIiwicGxhdGZvcm0iOiJ6YWkifQ.r_ysyrQhuI3CrUc7aLM1gc4xPItX-Co_ib5Zged7MZM";
+const ZAI_USER_ID = "6dfa578c-2be2-4d3f-9d73-30510417a1a4";
 
 /**
- * Get or create the ZAI SDK instance.
- * Uses `new ZAI(config)` directly instead of `ZAI.create()` (which reads from filesystem).
+ * Call the z-ai chat completions API directly via fetch.
+ * This bypasses the z-ai-web-dev-sdk package entirely, avoiding
+ * ESM/bundling issues on Vercel.
  */
-async function getZai(): Promise<any> {
-  if (zaiInstance) return zaiInstance;
-  zaiInstance = new (ZAI as any)(ZAI_CONFIG);
-  return zaiInstance;
+async function callZaiAI(systemPrompt: string, userPrompt: string): Promise<string> {
+  const url = `${ZAI_BASE_URL}/chat/completions`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${ZAI_API_KEY}`,
+    "X-Z-AI-From": "Z",
+    "X-Chat-Id": ZAI_CHAT_ID,
+    "X-User-Id": ZAI_USER_ID,
+    "X-Token": ZAI_TOKEN,
+  };
+
+  const body = JSON.stringify({
+    messages: [
+      { role: "assistant", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    thinking: { type: "disabled" },
+  });
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Z-AI API failed (${response.status}): ${errorText.slice(0, 200)}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content ?? "";
 }
 
 /**
@@ -51,14 +74,6 @@ export async function moderateContent(
   category: string
 ): Promise<ModerationResult> {
   if (!caption || caption.trim().length === 0) return SAFE;
-
-  let zai;
-  try {
-    zai = await getZai();
-  } catch (err) {
-    console.error("[moderation] SDK init failed:", err);
-    return { ...SAFE, summary: "Moderation offline — allowed by default." };
-  }
 
   const system = `You are "AuraGuard", the AI moderation engine for AuraMedia — a social network where members ONLY post GOALS and FLEXES (cars, watches, YouTube earnings, travel, fitness, business wins, milestones).
 
@@ -82,15 +97,7 @@ Rules:
   const user = `Post category: ${category}\nPost caption:\n"""\n${caption.slice(0, 2000)}\n"""`;
 
   try {
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: system },
-        { role: "user", content: user },
-      ],
-      thinking: { type: "disabled" },
-    });
-
-    const raw = completion.choices[0]?.message?.content ?? "";
+    const raw = await callZaiAI(system, user);
     const json = extractJson(raw);
     if (!json) return SAFE;
 
