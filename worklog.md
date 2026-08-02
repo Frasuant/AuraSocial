@@ -850,3 +850,20 @@ Task: QA the app, fix hardcoded dark colors for light theme, add mute/block user
 - Add post analytics (impressions, reach) for the author.
 - Add a "blocked users" management view (list + unblock).
 - Add image alt text for accessibility.
+
+---
+
+## Task ID: 14 (Turso cloud database integration)
+Agent: main (Z.ai Code)
+
+### What was done
+- Hardcoded Turso credentials in `src/lib/db.ts` per user request.
+- Dual-mode: Turso (production/Vercel) + local SQLite (dev/Turbopack).
+- Created `scripts/push-turso.ts` + `scripts/seed-turso.ts` for Turso setup.
+- Turso DB is seeded and ready. Local dev works with SQLite.
+
+### Why driver adapter doesn't work with Turbopack
+Prisma v6 driver adapters need the WASM query engine. Turbopack can't resolve the `#wasm-engine-loader` import condition. Vercel uses webpack which works. Solution: dual-mode database.
+
+### Verification
+- Lint: 0 errors. Local dev: all APIs working. Turso: schema + seed pushed.

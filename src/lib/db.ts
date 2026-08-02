@@ -1,96 +1,64 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { createClient } from "@libsql/client";
-import { existsSync, copyFileSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
+import { existsSync, copyFileSync, mkdirSync } from "fs";
 import path from "path";
 
 /**
- * AuraMedia database resolver.
+ * AuraMedia database.
  *
- * Supports three backends (auto-detected from DATABASE_URL):
- *  1. libSQL / Turso  (DATABASE_URL starts with "libsql://")  → persistent cloud DB (recommended for Vercel)
- *  2. SQLite file     (DATABASE_URL starts with "file:")       → local dev OR Vercel /tmp bootstrap
- *  3. Fallback        (no / unwritable)                        → /tmp/aura.db bootstrapped from bundled seed.db
+ * Production (Vercel): Uses Turso (libSQL) cloud database via Prisma driver adapter.
+ *   The WASM query engine loads correctly under webpack (Vercel's bundler).
  *
- * On serverless platforms (Vercel) the filesystem is read-only except /tmp, so we
- * copy the bundled `db/seed.db` to /tmp on cold start. This makes the app WORK
- * immediately (Admin login, demo posts). For real user signups that PERSIST across
- * cold starts, set DATABASE_URL to a Turso libSQL database (free tier, see Deploy Guide).
+ * Development (Turbopack): Uses a local SQLite file because Turbopack can't
+ *   resolve the #wasm-engine-loader import that Prisma's WASM engine needs.
+ *   The local SQLite is bootstrapped from db/seed.db on first run.
+ *
+ * ⚠️  Turso credentials are hardcoded per user request.
  */
+
+// ── Hardcoded Turso credentials ──────────────────────────────────────────
+const TURSO_URL = "libsql://auramedia-frasuant.aws-us-east-2.turso.io";
+const TURSO_TOKEN =
+  "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODU2ODg1NzYsImlkIjoiMDE5ZmJmNDEtYWMwMS03ZDg2LTgyY2EtN2MxNzEzNDdjMzlkIiwia2lkIjoiWjlkS0tyamx0SEw0NWxWM3AwdHVXUFIzXzM2NHI4bjB5dUVIcEEtWlRCYyIsInJpZCI6IjlkZTY3NzY3LWVlNzQtNDIyMS04MTNhLWYxMDZmNzAyNjhlZiJ9.nbbyyTWJKdDRKrLswlp80BtG1oc9g1oVW6v6GinKqV_qPhXEmq59HJvjSR6H7IgpYdfUkY0gHJQ37QFMFFD-DA";
+// ──────────────────────────────────────────────────────────────────────────
+
+// Use Turso in production, local SQLite in development.
+// This is because Turbopack (dev) can't load Prisma's WASM query engine,
+// which is required for driver adapters. Vercel (production) uses webpack
+// which loads the WASM engine correctly.
+const USE_TURSO = process.env.NODE_ENV === "production";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-function isWritableDir(dir: string): boolean {
-  try {
-    if (!existsSync(dir)) return false;
-    // probe write
-    const probe = path.join(dir, `.aura-writable-${Date.now()}`);
-    writeFileSync(probe, "x");
-    unlinkSync(probe);
-    return true;
-  } catch {
-    return false;
-  }
-}
+function bootstrapLocalSqlite(): string {
+  const dbPath = path.join(process.cwd(), "db", "custom.db");
+  const seedPath = path.join(process.cwd(), "db", "seed.db");
 
-/** Copy the bundled seed.db to the target path if the target doesn't exist. */
-function bootstrapFromSeed(targetPath: string) {
-  if (existsSync(targetPath)) return;
-  const seedCandidates = [
-    path.join(process.cwd(), "db", "seed.db"),
-    path.join(process.cwd(), "prisma", "seed.db"),
-  ];
-  for (const seed of seedCandidates) {
-    if (existsSync(seed) && seed !== targetPath) {
-      try {
-        mkdirSync(path.dirname(targetPath), { recursive: true });
-        copyFileSync(seed, targetPath);
-        console.log(`[db] bootstrapped ${targetPath} from bundled seed.db`);
-        return;
-      } catch (e) {
-        console.error(`[db] bootstrap copy failed:`, e);
-      }
+  if (!existsSync(dbPath) && existsSync(seedPath)) {
+    try {
+      mkdirSync(path.dirname(dbPath), { recursive: true });
+      copyFileSync(seedPath, dbPath);
+      console.log("[db] bootstrapped local SQLite from seed.db");
+    } catch (e) {
+      console.error("[db] bootstrap failed:", e);
     }
   }
-}
-
-function resolveSqliteUrl(): string {
-  const envUrl = process.env.DATABASE_URL;
-  if (envUrl && envUrl.startsWith("file:")) {
-    const filePath = envUrl.slice("file:".length);
-    const dir = path.dirname(filePath);
-    if (isWritableDir(dir)) {
-      bootstrapFromSeed(filePath);
-      return `file:${filePath}`;
-    }
-    // Configured path isn't writable (e.g. Vercel read-only FS) → fall through to /tmp
-  }
-  // Vercel / serverless fallback: /tmp is the only writable directory
-  const tmpDir = "/tmp";
-  if (existsSync(tmpDir)) {
-    const tmpDb = path.join(tmpDir, "aura.db");
-    bootstrapFromSeed(tmpDb);
-    return `file:${tmpDb}`;
-  }
-  // Last resort
-  return envUrl || "file:./db/custom.db";
+  return `file:${dbPath}`;
 }
 
 function createPrismaClient(): PrismaClient {
-  const envUrl = process.env.DATABASE_URL || "";
-
-  // 1) Turso / libSQL cloud database (persistent, works on Vercel)
-  if (envUrl.startsWith("libsql://") || envUrl.startsWith("https://")) {
-    const token = process.env.LIBSQL_TOKEN || process.env.TURSO_AUTH_TOKEN || "";
-    const libsql = createClient({ url: envUrl, authToken: token });
-    const adapter = new PrismaLibSql(libsql);
+  if (USE_TURSO) {
+    // ── Production: Turso via driver adapter ──
+    const libsql = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
+    const adapter = new PrismaLibSQL(libsql);
     return new PrismaClient({ adapter } as any);
   }
 
-  // 2) SQLite file (local dev or /tmp bootstrap on serverless)
-  const sqliteUrl = resolveSqliteUrl();
+  // ── Development: local SQLite file ──
+  const sqliteUrl = bootstrapLocalSqlite();
   return new PrismaClient({
     datasourceUrl: sqliteUrl,
     log: ["error"],

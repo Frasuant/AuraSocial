@@ -1,7 +1,8 @@
-// AuraMedia schema
+// AuraMedia schema — Turso (libSQL) in production, SQLite locally
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
