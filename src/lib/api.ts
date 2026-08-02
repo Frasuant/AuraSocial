@@ -203,4 +203,21 @@ export const aura = {
     }>("/api/admin/db-status"),
   adminReports: () =>
     api<{ reports: any[] }>("/api/admin/reports"),
+  adminReset: (body: {
+    posts?: boolean;
+    comments?: boolean;
+    likes?: boolean;
+    follows?: boolean;
+    bookmarks?: boolean;
+    notifications?: boolean;
+    reports?: boolean;
+    blocks?: boolean;
+    profileViews?: boolean;
+    users?: boolean;
+    allExceptAdmin?: boolean;
+  }) =>
+    api<{ ok: boolean; results: string[] }>("/api/admin/reset", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };
