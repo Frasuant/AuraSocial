@@ -115,7 +115,7 @@ export async function POST(req: Request) {
 
     // Drafts skip AI moderation (will be moderated on publish)
     let status: string;
-    let verdict = { approved: true, risk: 0, category: "safe", note: "", summary: "" };
+    let verdict: any = { approved: true, risk: 0, category: "safe", note: "", summary: "", isFlex: true, flexScore: 50 };
     if (isDraft) {
       status = "draft";
     } else {

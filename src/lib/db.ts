@@ -301,11 +301,23 @@ async function resolveIncludes(
             (row as any)[relName] = result.rows.map((r) => ({ userId: (r as any).userId }));
           } else {
             const result = await client.execute({ sql, args });
-            (row as any)[relName] = result.rows.map((r) => parseRow(r as any));
+            const childRows = result.rows.map((r) => parseRow(r as any));
+            // Merge _count from select into include for nested resolution
+            const childInc = mergeCountFromSelect(relInclude, relSelect);
+            if (childInc && childRows.length > 0) {
+              await resolveIncludes(rel.model, childRows, childInc);
+            }
+            (row as any)[relName] = childRows;
           }
         } else {
           const result = await client.execute({ sql, args });
-          (row as any)[relName] = result.rows.map((r) => parseRow(r as any));
+          const childRows = result.rows.map((r) => parseRow(r as any));
+          // Recursively resolve nested includes on child rows
+          const childInc = mergeCountFromSelect(relInclude, null);
+          if (childInc && childRows.length > 0) {
+            await resolveIncludes(rel.model, childRows, childInc);
+          }
+          (row as any)[relName] = childRows;
         }
       }
     }

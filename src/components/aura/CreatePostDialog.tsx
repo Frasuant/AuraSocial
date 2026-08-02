@@ -139,17 +139,22 @@ export function CreatePostDialog() {
       if (asDraft) {
         toast({ title: "Draft saved 📝", description: "Find it in your Drafts to finish later." });
       } else {
-        const m: ModerationResult = r.moderation;
-        if (m.approved) {
+        const m: any = r.moderation;
+        if (!m.approved) {
           toast({
-            title: "Posted! 🔥",
-            description: m.summary || "Your flex is live.",
+            title: "Held for review ⚠️",
+            description: `AuraGuard: ${m.note || m.summary}`,
+            variant: "destructive",
+          });
+        } else if (m.isFlex === false) {
+          toast({
+            title: "Posted — but not a flex 🤔",
+            description: `This doesn't look like a flex or goal. Flex score: ${m.flexScore}/100. ${m.summary || ""}`,
           });
         } else {
           toast({
-            title: "Held for review",
-            description: `AuraGuard flagged this: ${m.note || m.summary}`,
-            variant: "destructive",
+            title: "Posted! 🔥",
+            description: m.flexScore >= 70 ? `Great flex! Score: ${m.flexScore}/100` : (m.summary || "Your flex is live."),
           });
         }
       }

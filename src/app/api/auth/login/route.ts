@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     if (rl.limited) return rl.response!;
 
     const body = await req.json();
-    const identifier = String(body.identifier || "").trim();
+    const identifier = String(body.identifier || "").trim().toLowerCase();
     const password = String(body.password || "");
 
     if (!identifier || !password)

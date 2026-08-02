@@ -113,7 +113,7 @@ export function AuthScreen() {
                     id="loginId"
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
-                    placeholder="your_username"
+                    placeholder="username"
                     onKeyDown={(e) => e.key === "Enter" && doLogin()}
                   />
                 </div>
@@ -148,9 +148,10 @@ export function AuthScreen() {
                   <Input
                     id="regName"
                     value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    placeholder="your_handle"
+                    onChange={(e) => setRegName(e.target.value.toLowerCase())}
+                    placeholder="username (lowercase, a-z 0-9 . _)"
                   />
+                  <p className="text-[10px] text-muted-foreground">3-35 chars, lowercase letters, numbers, periods, underscores. No consecutive periods.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="regEmail">Email</Label>
