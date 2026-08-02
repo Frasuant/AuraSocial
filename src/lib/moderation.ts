@@ -2,12 +2,12 @@ import ZAI from "z-ai-web-dev-sdk";
 
 export interface ModerationResult {
   approved: boolean;
-  risk: number; // 0-100
+  risk: number;
   category: string;
   note: string;
   summary: string;
-  isFlex: boolean; // Is this actually a flex/goal post?
-  flexScore: number; // 0-100, how much this looks like a real flex
+  isFlex: boolean;
+  flexScore: number;
 }
 
 const SAFE: ModerationResult = {
@@ -20,10 +20,31 @@ const SAFE: ModerationResult = {
   flexScore: 50,
 };
 
+// Hardcoded z-ai SDK config (so it works on Vercel where .z-ai-config file doesn't exist)
+const ZAI_CONFIG = {
+  baseUrl: "https://internal-api.z.ai/v1",
+  apiKey: "Z.ai",
+  chatId: "chat-7e5ab694-8576-4a50-b658-5b4bc1c7802a",
+  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNmRmYTU3OGMtMmJlMi00ZDNmLTlkNzMtMzA1MTA0MTdhMWE0IiwiY2hhdF9pZCI6ImNoYXQtN2U1YWI2OTQtODU3Ni00YTUwLWI2NTgtNWI0YmMxYzc4MDJhIiwicGxhdGZvcm0iOiJ6YWkifQ.r_ysyrQhuI3CrUc7aLM1gc4xPItX-Co_ib5Zged7MZM",
+  userId: "6dfa578c-2be2-4d3f-9d73-30510417a1a4",
+};
+
+let zaiInstance: any = null;
+
+/**
+ * Get or create the ZAI SDK instance.
+ * Uses `new ZAI(config)` directly instead of `ZAI.create()` (which reads from filesystem).
+ */
+async function getZai(): Promise<any> {
+  if (zaiInstance) return zaiInstance;
+  zaiInstance = new (ZAI as any)(ZAI_CONFIG);
+  return zaiInstance;
+}
+
 /**
  * AI moderation: analyzes a post's caption for:
  * 1. Safety — scams, illegal, hate, harassment, explicit, spam, impersonation
- * 2. Relevance — is this actually a flex/goal post? (not just random text)
+ * 2. Relevance — is this actually a flex/goal post?
  */
 export async function moderateContent(
   caption: string,
@@ -33,8 +54,9 @@ export async function moderateContent(
 
   let zai;
   try {
-    zai = await ZAI.create();
-  } catch {
+    zai = await getZai();
+  } catch (err) {
+    console.error("[moderation] SDK init failed:", err);
     return { ...SAFE, summary: "Moderation offline — allowed by default." };
   }
 
@@ -50,12 +72,12 @@ Respond with STRICT JSON only:
 {"approved": boolean, "risk": 0-100, "category": "safe"|"spam"|"scam"|"hate"|"harassment"|"illegal"|"explicit"|"impersonation"|"off-topic", "note": "short reason under 120 chars", "summary": "one sentence", "isFlex": boolean, "flexScore": 0-100}
 
 Rules:
-- A legit flex about a car, earnings, fitness PR, business milestone → approved=true, isFlex=true, flexScore>=60
-- "DM me to make $5000/day" → approved=false, risk=90, category="scam"
-- NSFW/sexual content → approved=false, risk=95, category="explicit"
-- "What's everyone doing today?" → approved=true, isFlex=false, flexScore=10, category="off-topic"
-- "Just bought my dream car 🏎️" → approved=true, isFlex=true, flexScore=85
-- Hate/threats → approved=false, risk=100`;
+- A legit flex about a car, earnings, fitness PR, business milestone -> approved=true, isFlex=true, flexScore>=60
+- "DM me to make $5000/day" -> approved=false, risk=90, category="scam"
+- NSFW/sexual content -> approved=false, risk=95, category="explicit"
+- "What's everyone doing today?" -> approved=true, isFlex=false, flexScore=10, category="off-topic"
+- "Just bought my dream car" -> approved=true, isFlex=true, flexScore=85
+- Hate/threats -> approved=false, risk=100`;
 
   const user = `Post category: ${category}\nPost caption:\n"""\n${caption.slice(0, 2000)}\n"""`;
 
