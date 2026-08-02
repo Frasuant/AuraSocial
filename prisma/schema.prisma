@@ -1,4 +1,6 @@
-// AuraMedia schema — Turso (libSQL) in production, SQLite locally
+// AuraMedia schema — Turso (libSQL) cloud database via Prisma driver adapter.
+// The URL is a dummy file: path — it's only for Prisma's internal validation.
+// The actual database connection is handled by the Turso driver adapter in db.ts.
 
 generator client {
   provider        = "prisma-client-js"
@@ -7,7 +9,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:/tmp/dummy.db"
 }
 
 model User {

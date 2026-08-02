@@ -2,7 +2,21 @@ import bcrypt from "bcryptjs";
 import { createHmac } from "crypto";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import type { User } from "@prisma/client";
+
+// User type (replaces Prisma's generated type)
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  passwordHash: string;
+  bio: string;
+  avatarUrl: string;
+  avatarColor: string;
+  isVerified: boolean;
+  isAdmin: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const SESSION_COOKIE = "aura_session";
 const SECRET = process.env.AURA_SECRET || "auramedia-dev-secret-change-me";
