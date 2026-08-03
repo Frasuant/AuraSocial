@@ -104,8 +104,8 @@ export function sanitizeUser(user: User) {
     bio: user.bio,
     avatarUrl: user.avatarUrl,
     avatarColor: user.avatarColor,
-    isVerified: user.isVerified,
-    isAdmin: user.isAdmin,
+    isVerified: Boolean(user.isVerified),
+    isAdmin: Boolean(user.isAdmin),
     createdAt: user.createdAt,
   };
 }

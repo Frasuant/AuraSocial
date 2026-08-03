@@ -44,6 +44,7 @@ import { LegalLinks, LegalPage as LegalPageComp } from "./LegalPages";
 import { useToast } from "@/hooks/use-toast";
 
 export function AppShell() {
+  const [legalPage, setLegalPage] = useState<string | null>(null);
   const {
     user,
     setUser,
