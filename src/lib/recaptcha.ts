@@ -15,8 +15,8 @@
 // ── reCAPTCHA keys ────────────────────────────────────────────────────────
 // Google's test keys (always pass the checkbox, work on any domain).
 // Replace with your own keys for production.
-export const RECAPTCHA_SITE_KEY = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
-const RECAPTCHA_SECRET = "6LeIxAcTAAAAAGG-vFI1TnSPxvi1dYy2kU5z5qN";
+export const RECAPTCHA_SITE_KEY = "6LcmdXItAAAAAGkHYvrMTSAKezWCw2v3y_G2hMwQ";
+const RECAPTCHA_SECRET = "6LcmdXItAAAAAHyB3bV8Jv9vrvjehkZVlk2SM2bB";
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
