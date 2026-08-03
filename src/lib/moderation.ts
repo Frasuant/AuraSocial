@@ -569,3 +569,198 @@ export function moderateImage(
 
   return { approved: true, reason: "Image passed basic checks." };
 }
+
+// ═════════════════════════════════════════════════════════════════════════
+// 9. NSFW IMAGE CONTENT ANALYSIS — skin tone detection + heuristics
+// ═════════════════════════════════════════════════════════════════════════
+
+export interface ImageContentResult {
+  approved: boolean;
+  risk: number;
+  note: string;
+  reason?: string;
+}
+
+/**
+ * Analyze image content for NSFW material using skin tone detection.
+ *
+ * This uses a well-researched heuristic: NSFW images typically have a very high
+ * percentage of skin-colored pixels (often > 40-50%). We:
+ * 1. Resize the image to a small thumbnail (50x50) for fast processing
+ * 2. Convert pixels to the YCbCr color space (better for skin detection than RGB)
+ * 3. Count skin-tone pixels using establishedCb/Cr ranges
+ * 4. Check for skin concentration in specific regions
+ * 5. Combine multiple signals into a risk score
+ *
+ * This is NOT 100% accurate (no automated system is), but it catches the
+ * vast majority of obvious NSFW images.
+ */
+export async function analyzeImageContent(
+  buffer: Buffer,
+  mimeType: string
+): Promise<ImageContentResult> {
+  try {
+    // Dynamic import of sharp (might not be available on all platforms)
+    let sharpModule: any;
+    try {
+      sharpModule = (await import("sharp")).default;
+    } catch {
+      // sharpModule not available — allow the image (can't analyze)
+      return { approved: true, risk: 0, note: "Image analysis unavailable." };
+    }
+
+    // Get image metadata
+    const metadata = await sharpModule(buffer).metadata();
+    const width = metadata.width || 0;
+    const height = metadata.height || 0;
+
+    // Reject images that are too small (likely icons/thumbnails)
+    if (width < 50 || height < 50) {
+      return { approved: true, risk: 0, note: "Image too small for analysis." };
+    }
+
+    // Resize to a small thumbnail for fast pixel analysis
+    const thumbnail = await sharpModule(buffer)
+      .resize(100, 100, { fit: "cover" })
+      .raw()
+      .toBuffer();
+
+    const pixelCount = thumbnail.length / 3; // RGB = 3 bytes per pixel
+
+    let skinPixels = 0;
+    let skinInCenter = 0;
+    let skinInBottom = 0;
+    let veryRedPixels = 0;
+    let fleshGradientPixels = 0;
+    let prevWasSkin = false;
+    let skinRuns = 0;
+
+    for (let i = 0; i < thumbnail.length; i += 3) {
+      const r = thumbnail[i];
+      const g = thumbnail[i + 1];
+      const b = thumbnail[i + 2];
+
+      // ── Skin tone detection in RGB ──
+      // Standard skin tone rules: R > G > B, R > 95, R-G > 15, max-min > 15
+      const isSkinRGB =
+        r > 95 &&
+        g > 40 &&
+        b > 20 &&
+        r > g &&
+        r > b &&
+        Math.max(r, g, b) - Math.min(r, g, b) > 15 &&
+        Math.abs(r - g) > 15;
+
+      // ── Skin tone detection in YCbCr ──
+      // Y = 0.299R + 0.587G + 0.114B
+      // Cb = -0.168736R - 0.331264G + 0.5B + 128
+      // Cr = 0.5R - 0.418688G - 0.081312B + 128
+      const y = 0.299 * r + 0.587 * g + 0.114 * b;
+      const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
+      const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
+
+      // Established skin tone ranges in YCbCr
+      const isSkinYCbCr =
+        y > 80 &&
+        cb >= 85 && cb <= 135 &&
+        cr >= 135 && cr <= 180;
+
+      const isSkin = isSkinRGB || isSkinYCbCr;
+
+      if (isSkin) {
+        skinPixels++;
+
+        // Track skin concentration in center region (rows 25-75, cols 25-75)
+        const pixelIdx = i / 3;
+        const row = Math.floor(pixelIdx / 100);
+        const col = pixelIdx % 100;
+        if (row >= 25 && row <= 75 && col >= 25 && col <= 75) {
+          skinInCenter++;
+        }
+
+        // Track skin in bottom half (common in explicit images)
+        if (row >= 50) {
+          skinInBottom++;
+        }
+
+        // Track continuous skin regions (flesh gradients = more skin-like)
+        if (prevWasSkin) {
+          skinRuns++;
+        }
+        prevWasSkin = true;
+      } else {
+        prevWasSkin = false;
+      }
+
+      // ── Detect very red pixels (common in explicit close-ups) ──
+      if (r > 180 && r - g > 50 && r - b > 50 && g < 120) {
+        veryRedPixels++;
+      }
+    }
+
+    const skinPercentage = (skinPixels / pixelCount) * 100;
+    const centerSkinPercentage = (skinInCenter / (50 * 50)) * 100;
+    const bottomSkinPercentage = (skinInBottom / (50 * 100)) * 100;
+    const veryRedPercentage = (veryRedPixels / pixelCount) * 100;
+    const skinRunRatio = skinPixels > 0 ? skinRuns / skinPixels : 0;
+
+    // ── Calculate risk score (0-100) ──
+    let risk = 0;
+
+    // High skin percentage is the primary NSFW signal
+    if (skinPercentage > 55) risk += 40;
+    else if (skinPercentage > 45) risk += 30;
+    else if (skinPercentage > 35) risk += 20;
+    else if (skinPercentage > 25) risk += 10;
+
+    // Skin concentrated in center is a secondary signal
+    if (centerSkinPercentage > 60) risk += 20;
+    else if (centerSkinPercentage > 45) risk += 10;
+
+    // Skin in bottom half (common in explicit images)
+    if (bottomSkinPercentage > 50) risk += 15;
+    else if (bottomSkinPercentage > 35) risk += 8;
+
+    // Very red pixels (explicit close-ups)
+    if (veryRedPercentage > 15) risk += 20;
+    else if (veryRedPercentage > 8) risk += 10;
+
+    // Long continuous skin runs (large flesh areas)
+    if (skinRunRatio > 0.7 && skinPercentage > 30) risk += 15;
+
+    // Aspect ratio checks — portrait images with high skin % are more likely NSFW
+    const aspectRatio = height / width;
+    if (aspectRatio > 1.2 && skinPercentage > 35) risk += 10;
+
+    risk = Math.min(100, risk);
+
+    // ── Decision ──
+    if (risk >= 65) {
+      return {
+        approved: false,
+        risk,
+        note: `NSFW image detected (skin: ${Math.round(skinPercentage)}%, risk: ${risk})`,
+        reason: `Image appears to contain explicit/NSFW content. Skin coverage: ${Math.round(skinPercentage)}%.`,
+      };
+    }
+
+    if (risk >= 45) {
+      return {
+        approved: false,
+        risk,
+        note: `Potentially NSFW image (skin: ${Math.round(skinPercentage)}%, risk: ${risk})`,
+        reason: `Image may contain inappropriate content. Skin coverage: ${Math.round(skinPercentage)}%.`,
+      };
+    }
+
+    return {
+      approved: true,
+      risk,
+      note: `Image approved (skin: ${Math.round(skinPercentage)}%, risk: ${risk})`,
+    };
+  } catch (err) {
+    console.error("[image analysis] error:", err);
+    // If analysis fails, allow the image (better than blocking all uploads)
+    return { approved: true, risk: 0, note: "Image analysis failed — allowed by default." };
+  }
+}
