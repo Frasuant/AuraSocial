@@ -15,6 +15,7 @@ import {
   Rocket,
   Database,
   AlertTriangle,
+  Shield,
 } from "lucide-react";
 import { aura } from "@/lib/api";
 import { useApp } from "@/store/app";
@@ -203,7 +204,7 @@ function UsersTab() {
       const r = await aura.adminDeleteUser(deletingId);
       setUsers((list) => list.filter((u) => u.id !== deletingId));
       toast({
-        title: "Account deleted 🗑",
+        title: "Account deleted",
         description: `@${r.deletedUsername} and all their posts are gone.`,
       });
       setDeletingId(null);
@@ -211,6 +212,23 @@ function UsersTab() {
       toast({ title: "Couldn't delete", description: e.message, variant: "destructive" });
     } finally {
       setDeleteBusy(false);
+    }
+  };
+
+  const toggleModerator = async (u: AuraUser) => {
+    setToggling(u.id);
+    try {
+      const isMod = Boolean((u as any).isModerator);
+      const r = await aura.adminModerator(u.id, !isMod);
+      setUsers((list) => list.map((x) => (x.id === u.id ? { ...x, isModerator: r.user.isModerator } as any : x)));
+      toast({
+        title: r.user.isModerator ? "Promoted to Moderator" : "Moderator removed",
+        description: `@${u.username} ${r.user.isModerator ? "is now a moderator" : "is no longer a moderator"}`,
+      });
+    } catch (e: any) {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    } finally {
+      setToggling(null);
     }
   };
 
@@ -254,6 +272,11 @@ function UsersTab() {
                       Admin
                     </span>
                   )}
+                  {Boolean((u as any).isModerator) && !u.isAdmin && (
+                    <span className="rounded-full bg-gradient-to-r from-sky-500 to-cyan-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      Mod
+                    </span>
+                  )}
                 </button>
                 <p className="text-xs text-muted-foreground truncate">
                   {u.email} · {u.postCount} posts · {u.followerCount} followers
@@ -277,15 +300,27 @@ function UsersTab() {
                 )}
               </Button>
               {!u.isAdmin && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setDeletingId(u.id)}
-                  className="text-rose-300 hover:bg-rose-500/10 hover:text-rose-200 shrink-0"
-                  title="Delete account"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    disabled={toggling === u.id}
+                    variant={Boolean((u as any).isModerator) ? "secondary" : "outline"}
+                    onClick={() => toggleModerator(u)}
+                    className={Boolean((u as any).isModerator) ? "border-sky-500/30 text-sky-400" : "border-sky-500/30 text-sky-400 hover:bg-sky-500/10"}
+                    title={Boolean((u as any).isModerator) ? "Remove moderator" : "Make moderator"}
+                  >
+                    {toggling === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDeletingId(u.id)}
+                    className="text-rose-300 hover:bg-rose-500/10 hover:text-rose-200 shrink-0"
+                    title="Delete account"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
               )}
             </div>
           ))}

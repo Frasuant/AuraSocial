@@ -20,7 +20,7 @@ export async function DELETE(
     if (!post)
       return NextResponse.json({ error: "Post not found." }, { status: 404 });
 
-    if (post.authorId !== me.id && !me.isAdmin)
+    if (post.authorId !== me.id && !me.isAdmin && !me.isModerator)
       return NextResponse.json({ error: "You can only delete your own posts." }, { status: 403 });
 
     await db.post.delete({ where: { id } });

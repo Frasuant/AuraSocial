@@ -7,6 +7,7 @@ export interface AuraUser {
   avatarColor: string;
   isVerified: boolean;
   isAdmin: boolean;
+  isModerator?: boolean;
   createdAt: string;
   postCount?: number;
   followerCount?: number;

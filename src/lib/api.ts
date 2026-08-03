@@ -175,6 +175,11 @@ export const aura = {
       method: "POST",
       body: JSON.stringify({ userId, verified }),
     }),
+  adminModerator: (userId: string, promote: boolean) =>
+    api<{ ok: boolean; user: { id: string; username: string; isModerator: boolean } }>("/api/admin/moderator", {
+      method: "POST",
+      body: JSON.stringify({ userId, promote }),
+    }),
   adminDeleteUser: (userId: string) =>
     api<{ ok: boolean; deletedUsername: string }>(`/api/admin/users/${userId}`, { method: "DELETE" }),
   adminPosts: (status: string) =>

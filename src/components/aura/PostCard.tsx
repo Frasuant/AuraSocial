@@ -72,6 +72,9 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
   const cat = categoryMeta(post.category);
 
   const isOwnPost = user && post.author && user.id === post.author.id;
+  const isAdmin = Boolean(user?.isAdmin);
+  const isModerator = Boolean(user?.isModerator);
+  const canModerate = isAdmin || isModerator;
 
   const toggleLike = async () => {
     if (!user) {
@@ -343,7 +346,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
         >
           <Share2 className="h-5 w-5" />
         </button>
-        {user && !isOwnPost && (
+        {user && !isOwnPost && !canModerate && (
           <button
             onClick={toggleRepost}
             disabled={repostBusy}
@@ -420,12 +423,22 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen?: () => void }) 
                     </DropdownMenuItem>
                   </>
                 ) : (
-                  <DropdownMenuItem
-                    onClick={() => setReportOpen(true)}
-                    className="text-amber-300 focus:text-amber-200 focus:bg-amber-500/10 cursor-pointer"
-                  >
-                    <Flag className="h-4 w-4 mr-2" /> Report post
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => setReportOpen(true)}
+                      className="text-amber-300 focus:text-amber-200 focus:bg-amber-500/10 cursor-pointer"
+                    >
+                      <Flag className="h-4 w-4 mr-2" /> Report post
+                    </DropdownMenuItem>
+                    {canModerate && (
+                      <DropdownMenuItem
+                        onClick={() => setDeleteOpen(true)}
+                        className="text-rose-300 focus:text-rose-200 focus:bg-rose-500/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" /> Delete post{isAdmin ? " (admin)" : " (mod)"}
+                      </DropdownMenuItem>
+                    )}
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

@@ -16,6 +16,7 @@ export async function GET() {
         avatarColor: true,
         isVerified: true,
         isAdmin: true,
+        isModerator: true,
         createdAt: true,
         _count: {
           select: { posts: true, followers: true, following: true },
@@ -32,6 +33,7 @@ export async function GET() {
         avatarColor: u.avatarColor,
         isVerified: u.isVerified,
         isAdmin: u.isAdmin,
+        isModerator: (u as any).isModerator ?? 0,
         createdAt: u.createdAt,
         postCount: u._count.posts,
         followerCount: u._count.followers,

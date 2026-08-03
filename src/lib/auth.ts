@@ -14,6 +14,7 @@ export interface User {
   avatarColor: string;
   isVerified: boolean;
   isAdmin: boolean;
+  isModerator: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -106,6 +107,7 @@ export function sanitizeUser(user: User) {
     avatarColor: user.avatarColor,
     isVerified: Boolean(user.isVerified),
     isAdmin: Boolean(user.isAdmin),
+    isModerator: Boolean(user.isModerator),
     createdAt: user.createdAt,
   };
 }
