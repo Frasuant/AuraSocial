@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { LegalLinks, LegalPage as LegalPageComp } from "./LegalPages";
 
 export function AuthScreen() {
   const { setUser } = useApp();
@@ -29,6 +30,7 @@ export function AuthScreen() {
   // reCAPTCHA tokens
   const [loginToken, setLoginToken] = useState<string | null>(null);
   const [regToken, setRegToken] = useState<string | null>(null);
+  const [legalPage, setLegalPage] = useState<string | null>(null);
 
   // reCAPTCHA widget IDs (to reset them)
   const loginWidgetId = useRef<number | null>(null);
@@ -266,6 +268,11 @@ export function AuthScreen() {
           </div>
         </div>
       </main>
+      {legalPage ? (
+        <LegalPageComp page={legalPage as any} onBack={() => setLegalPage(null)} />
+      ) : (
+        <LegalLinks onSelect={(p) => setLegalPage(p)} />
+      )}
     </div>
   );
 }

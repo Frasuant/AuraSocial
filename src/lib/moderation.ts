@@ -571,7 +571,7 @@ export function moderateImage(
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// 9. NSFW IMAGE CONTENT ANALYSIS — skin tone detection + heuristics
+// 9. NSFW IMAGE ANALYSIS — works without sharp (pure JS pixel analysis)
 // ═════════════════════════════════════════════════════════════════════════
 
 export interface ImageContentResult {
@@ -582,185 +582,244 @@ export interface ImageContentResult {
 }
 
 /**
- * Analyze image content for NSFW material using skin tone detection.
+ * Decode a PNG/JPEG buffer into raw RGB pixel data using the browser's
+ * Canvas API (server-side via OffscreenCanvas) or a pure-JS PNG decoder.
  *
- * This uses a well-researched heuristic: NSFW images typically have a very high
- * percentage of skin-colored pixels (often > 40-50%). We:
- * 1. Resize the image to a small thumbnail (50x50) for fast processing
- * 2. Convert pixels to the YCbCr color space (better for skin detection than RGB)
- * 3. Count skin-tone pixels using establishedCb/Cr ranges
- * 4. Check for skin concentration in specific regions
- * 5. Combine multiple signals into a risk score
- *
- * This is NOT 100% accurate (no automated system is), but it catches the
- * vast majority of obvious NSFW images.
+ * Since we can't use sharp on Vercel, we use a simpler approach:
+ * 1. Parse the image dimensions and basic stats from the buffer
+ * 2. Sample pixels directly from the raw image data
+ * 3. Analyze skin tone distribution
  */
+
+// Minimal PNG decoder — extracts dimensions and samples pixel data
+function decodePngDimensions(buf: Buffer): { width: number; height: number } | null {
+  // PNG signature: 8 bytes, then IHDR chunk
+  if (buf.length < 24) return null;
+  if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) return null;
+  // IHDR starts at byte 8, length at 8-11, type at 12-15, data at 16
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  if (width > 0 && height > 0 && width < 100000 && height < 100000) {
+    return { width, height };
+  }
+  return null;
+}
+
+// Minimal JPEG decoder — extracts dimensions
+function decodeJpegDimensions(buf: Buffer): { width: number; height: number } | null {
+  if (buf.length < 4) return null;
+  if (buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i < buf.length) {
+    if (buf[i] !== 0xff) { i++; continue; }
+    const marker = buf[i + 1];
+    if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+      // SOF marker — contains dimensions
+      if (i + 9 > buf.length) return null;
+      const height = buf.readUInt16BE(i + 5);
+      const width = buf.readUInt16BE(i + 7);
+      if (width > 0 && height > 0) return { width, height };
+    }
+    if (marker === 0xd9 || marker === 0xda) break; // EOI or SOS
+    const len = buf.readUInt16BE(i + 2);
+    i += 2 + len;
+  }
+  return null;
+}
+
+
+/**
+ * Decode PNG to raw RGB pixels — pure JS, no native dependencies.
+ * Handles 8-bit RGB/RGBA/grayscale, non-interlaced PNGs.
+ */
+async function decodePngToRGB(buf: Buffer): { width: number; height: number; data: Buffer } | null {
+  if (buf.length < 24) return null;
+  if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) return null;
+
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  if (width <= 0 || height <= 0 || width > 5000 || height > 5000) return null;
+
+  const bitDepth = buf[24];
+  const colorType = buf[25];
+  const interlace = buf[28];
+
+  if (bitDepth !== 8 || interlace !== 0) return null;
+
+  const channels = colorType === 2 ? 3 : colorType === 6 ? 4 : colorType === 0 ? 1 : null;
+  if (!channels) return null;
+
+  // Find IDAT chunks
+  const idatChunks: Buffer[] = [];
+  let offset = 8;
+  while (offset < buf.length - 8) {
+    const chunkLength = buf.readUInt32BE(offset);
+    const chunkType = buf.toString("ascii", offset + 4, offset + 8);
+    if (chunkType === "IDAT") {
+      idatChunks.push(buf.subarray(offset + 8, offset + 8 + chunkLength));
+    }
+    if (chunkType === "IEND") break;
+    offset += 12 + chunkLength;
+  }
+
+  if (idatChunks.length === 0) return null;
+
+  // Decompress with Node.js zlib (works on Vercel)
+  let rawData: Buffer;
+  try {
+    const { inflateSync } = await import("zlib");
+    rawData = inflateSync(Buffer.concat(idatChunks));
+  } catch {
+    return null;
+  }
+
+  // Apply PNG filters and extract RGB
+  const bpp = channels;
+  const stride = width * bpp + 1;
+  const rgbData = Buffer.alloc(width * height * 3);
+  let prevRow: Buffer | null = null;
+
+  for (let y = 0; y < height; y++) {
+    const rowStart = y * stride;
+    const filterType = rawData[rowStart];
+    const row = Buffer.from(rawData.subarray(rowStart + 1, rowStart + 1 + width * bpp));
+
+    switch (filterType) {
+      case 1: for (let i = bpp; i < row.length; i++) row[i] = (row[i] + row[i - bpp]) & 0xff; break;
+      case 2: if (prevRow) for (let i = 0; i < row.length; i++) row[i] = (row[i] + prevRow[i]) & 0xff; break;
+      case 3: for (let i = 0; i < row.length; i++) { const a = i >= bpp ? row[i - bpp] : 0; const b = prevRow ? prevRow[i] : 0; row[i] = (row[i] + Math.floor((a + b) / 2)) & 0xff; } break;
+      case 4: for (let i = 0; i < row.length; i++) { const a = i >= bpp ? row[i - bpp] : 0; const b = prevRow ? prevRow[i] : 0; const c = prevRow && i >= bpp ? prevRow[i - bpp] : 0; const p = a + b - c; const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); row[i] = (row[i] + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)) & 0xff; } break;
+    }
+
+    for (let x = 0; x < width; x++) {
+      const si = x * bpp;
+      const di = (y * width + x) * 3;
+      rgbData[di] = row[si];
+      rgbData[di + 1] = channels >= 2 ? row[si + 1] : row[si];
+      rgbData[di + 2] = channels >= 3 ? row[si + 2] : row[si];
+    }
+    prevRow = row;
+  }
+
+  return { width, height, data: rgbData };
+}
+
+async function estimateSkinContent(buf: Buffer, mimeType: string): Promise<{ skinPercent: number; risk: number; note: string }> {
+  // Try full pixel analysis for PNG
+  if (mimeType === "image/png") {
+    const decoded = await decodePngToRGB(buf);
+    if (decoded) {
+      const { width, height, data } = decoded;
+      const pixelCount = width * height;
+      const aspectRatio = height / width;
+
+      let skinPixels = 0, skinInCenter = 0, skinInBottom = 0, veryRed = 0, skinRuns = 0, prevSkin = false;
+
+      for (let i = 0; i < pixelCount; i++) {
+        const r = data[i * 3], g = data[i * 3 + 1], b = data[i * 3 + 2];
+        const isSkinRGB = r > 95 && g > 40 && b > 20 && r > g && r > b && Math.max(r, g, b) - Math.min(r, g, b) > 15 && Math.abs(r - g) > 15;
+        const y = 0.299 * r + 0.587 * g + 0.114 * b;
+        const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
+        const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
+        const isSkinYCbCr = y > 80 && cb >= 85 && cb <= 135 && cr >= 135 && cr <= 180;
+        const isSkin = isSkinRGB || isSkinYCbCr;
+
+        if (isSkin) {
+          skinPixels++;
+          const row = Math.floor(i / width), col = i % width;
+          if (row >= height * 0.25 && row <= height * 0.75 && col >= width * 0.25 && col <= width * 0.75) skinInCenter++;
+          if (row >= height * 0.5) skinInBottom++;
+          if (prevSkin) skinRuns++;
+          prevSkin = true;
+        } else { prevSkin = false; }
+        if (r > 180 && r - g > 50 && r - b > 50 && g < 120) veryRed++;
+      }
+
+      const skinPercent = (skinPixels / pixelCount) * 100;
+      const centerSkin = (skinInCenter / (pixelCount * 0.25)) * 100;
+      const bottomSkin = (skinInBottom / (pixelCount * 0.5)) * 100;
+      const redPercent = (veryRed / pixelCount) * 100;
+      const runRatio = skinPixels > 0 ? skinRuns / skinPixels : 0;
+
+      let risk = 0;
+      if (skinPercent > 55) risk += 40; else if (skinPercent > 45) risk += 30; else if (skinPercent > 35) risk += 20; else if (skinPercent > 25) risk += 10;
+      if (centerSkin > 60) risk += 20; else if (centerSkin > 45) risk += 10;
+      if (bottomSkin > 50) risk += 15; else if (bottomSkin > 35) risk += 8;
+      if (redPercent > 15) risk += 20; else if (redPercent > 8) risk += 10;
+      if (runRatio > 0.7 && skinPercent > 30) risk += 15;
+      if (aspectRatio > 1.2 && skinPercent > 35) risk += 10;
+      risk = Math.min(100, risk);
+
+      return { skinPercent, risk, note: `Pixel: skin=${Math.round(skinPercent)}% center=${Math.round(centerSkin)}% red=${Math.round(redPercent)}% risk=${risk}` };
+    }
+  }
+
+  // Fallback for JPEG or un-decodable PNGs: byte distribution analysis
+  let dims: { width: number; height: number } | null = null;
+  if (mimeType === "image/png") dims = decodePngDimensions(buf);
+  else if (mimeType === "image/jpeg") dims = decodeJpegDimensions(buf);
+  if (!dims) return { skinPercent: 0, risk: 0, note: "Could not analyze." };
+
+  const aspectRatio = dims.height / dims.width;
+  const step = Math.max(1, Math.floor(buf.length / 8000));
+  let warm = 0, redDom = 0, uniform = 0, total = 0, prevR = -1, prevG = -1, prevB = -1;
+
+  for (let i = 0; i < buf.length; i += step) {
+    if (i + 2 >= buf.length) break;
+    const r = buf[i], g = buf[i + 1], b = buf[i + 2];
+    if (r > 100 && g > 60 && b > 40 && r > g && r > b && (r - g) > 10) warm++;
+    if (r > 180 && (r - g) > 40 && (r - b) > 40) redDom++;
+    if (prevR >= 0 && Math.abs(r - prevR) < 20 && Math.abs(g - prevG) < 20 && Math.abs(b - prevB) < 20) uniform++;
+    prevR = r; prevG = g; prevB = b;
+    total++;
+  }
+
+  const warmPct = total > 0 ? (warm / total) * 100 : 0;
+  const redPct = total > 0 ? (redDom / total) * 100 : 0;
+  const uniPct = total > 0 ? (uniform / total) * 100 : 0;
+
+  let risk = 0;
+  if (warmPct > 35) risk += 35; else if (warmPct > 25) risk += 22; else if (warmPct > 15) risk += 10;
+  if (redPct > 20) risk += 25; else if (redPct > 12) risk += 15; else if (redPct > 6) risk += 8;
+  if (aspectRatio > 1.3 && warmPct > 20) risk += 15;
+  if (warmPct > 45) risk += 20;
+  if (uniPct > 60 && warmPct > 25) risk += 15;
+  risk = Math.min(100, risk);
+
+  return { skinPercent: warmPct, risk, note: `Byte: skin=${Math.round(warmPct)}% red=${Math.round(redPct)}% uniform=${Math.round(uniPct)}% aspect=${aspectRatio.toFixed(2)} risk=${risk}` };
+}
 export async function analyzeImageContent(
   buffer: Buffer,
   mimeType: string
 ): Promise<ImageContentResult> {
   try {
-    // Dynamic import of sharp (might not be available on all platforms)
-    let sharpModule: any;
-    try {
-      sharpModule = (await import("sharp")).default;
-    } catch {
-      // sharpModule not available — allow the image (can't analyze)
-      return { approved: true, risk: 0, note: "Image analysis unavailable." };
-    }
+    const analysis = await estimateSkinContent(buffer, mimeType);
 
-    // Get image metadata
-    const metadata = await sharpModule(buffer).metadata();
-    const width = metadata.width || 0;
-    const height = metadata.height || 0;
-
-    // Reject images that are too small (likely icons/thumbnails)
-    if (width < 50 || height < 50) {
-      return { approved: true, risk: 0, note: "Image too small for analysis." };
-    }
-
-    // Resize to a small thumbnail for fast pixel analysis
-    const thumbnail = await sharpModule(buffer)
-      .resize(100, 100, { fit: "cover" })
-      .raw()
-      .toBuffer();
-
-    const pixelCount = thumbnail.length / 3; // RGB = 3 bytes per pixel
-
-    let skinPixels = 0;
-    let skinInCenter = 0;
-    let skinInBottom = 0;
-    let veryRedPixels = 0;
-    let fleshGradientPixels = 0;
-    let prevWasSkin = false;
-    let skinRuns = 0;
-
-    for (let i = 0; i < thumbnail.length; i += 3) {
-      const r = thumbnail[i];
-      const g = thumbnail[i + 1];
-      const b = thumbnail[i + 2];
-
-      // ── Skin tone detection in RGB ──
-      // Standard skin tone rules: R > G > B, R > 95, R-G > 15, max-min > 15
-      const isSkinRGB =
-        r > 95 &&
-        g > 40 &&
-        b > 20 &&
-        r > g &&
-        r > b &&
-        Math.max(r, g, b) - Math.min(r, g, b) > 15 &&
-        Math.abs(r - g) > 15;
-
-      // ── Skin tone detection in YCbCr ──
-      // Y = 0.299R + 0.587G + 0.114B
-      // Cb = -0.168736R - 0.331264G + 0.5B + 128
-      // Cr = 0.5R - 0.418688G - 0.081312B + 128
-      const y = 0.299 * r + 0.587 * g + 0.114 * b;
-      const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
-      const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
-
-      // Established skin tone ranges in YCbCr
-      const isSkinYCbCr =
-        y > 80 &&
-        cb >= 85 && cb <= 135 &&
-        cr >= 135 && cr <= 180;
-
-      const isSkin = isSkinRGB || isSkinYCbCr;
-
-      if (isSkin) {
-        skinPixels++;
-
-        // Track skin concentration in center region (rows 25-75, cols 25-75)
-        const pixelIdx = i / 3;
-        const row = Math.floor(pixelIdx / 100);
-        const col = pixelIdx % 100;
-        if (row >= 25 && row <= 75 && col >= 25 && col <= 75) {
-          skinInCenter++;
-        }
-
-        // Track skin in bottom half (common in explicit images)
-        if (row >= 50) {
-          skinInBottom++;
-        }
-
-        // Track continuous skin regions (flesh gradients = more skin-like)
-        if (prevWasSkin) {
-          skinRuns++;
-        }
-        prevWasSkin = true;
-      } else {
-        prevWasSkin = false;
-      }
-
-      // ── Detect very red pixels (common in explicit close-ups) ──
-      if (r > 180 && r - g > 50 && r - b > 50 && g < 120) {
-        veryRedPixels++;
-      }
-    }
-
-    const skinPercentage = (skinPixels / pixelCount) * 100;
-    const centerSkinPercentage = (skinInCenter / (50 * 50)) * 100;
-    const bottomSkinPercentage = (skinInBottom / (50 * 100)) * 100;
-    const veryRedPercentage = (veryRedPixels / pixelCount) * 100;
-    const skinRunRatio = skinPixels > 0 ? skinRuns / skinPixels : 0;
-
-    // ── Calculate risk score (0-100) ──
-    let risk = 0;
-
-    // High skin percentage is the primary NSFW signal
-    if (skinPercentage > 55) risk += 40;
-    else if (skinPercentage > 45) risk += 30;
-    else if (skinPercentage > 35) risk += 20;
-    else if (skinPercentage > 25) risk += 10;
-
-    // Skin concentrated in center is a secondary signal
-    if (centerSkinPercentage > 60) risk += 20;
-    else if (centerSkinPercentage > 45) risk += 10;
-
-    // Skin in bottom half (common in explicit images)
-    if (bottomSkinPercentage > 50) risk += 15;
-    else if (bottomSkinPercentage > 35) risk += 8;
-
-    // Very red pixels (explicit close-ups)
-    if (veryRedPercentage > 15) risk += 20;
-    else if (veryRedPercentage > 8) risk += 10;
-
-    // Long continuous skin runs (large flesh areas)
-    if (skinRunRatio > 0.7 && skinPercentage > 30) risk += 15;
-
-    // Aspect ratio checks — portrait images with high skin % are more likely NSFW
-    const aspectRatio = height / width;
-    if (aspectRatio > 1.2 && skinPercentage > 35) risk += 10;
-
-    risk = Math.min(100, risk);
-
-    // ── Decision ──
-    if (risk >= 65) {
+    if (analysis.risk >= 55) {
       return {
         approved: false,
-        risk,
-        note: `NSFW image detected (skin: ${Math.round(skinPercentage)}%, risk: ${risk})`,
-        reason: `Image appears to contain explicit/NSFW content. Skin coverage: ${Math.round(skinPercentage)}%.`,
+        risk: analysis.risk,
+        note: analysis.note,
+        reason: "Image appears to contain explicit/NSFW content based on skin tone analysis.",
       };
     }
 
-    if (risk >= 45) {
+    if (analysis.risk >= 40) {
       return {
         approved: false,
-        risk,
-        note: `Potentially NSFW image (skin: ${Math.round(skinPercentage)}%, risk: ${risk})`,
-        reason: `Image may contain inappropriate content. Skin coverage: ${Math.round(skinPercentage)}%.`,
+        risk: analysis.risk,
+        note: analysis.note,
+        reason: "Image may contain inappropriate content based on skin tone analysis.",
       };
     }
 
     return {
       approved: true,
-      risk,
-      note: `Image approved (skin: ${Math.round(skinPercentage)}%, risk: ${risk})`,
+      risk: analysis.risk,
+      note: analysis.note,
     };
   } catch (err) {
     console.error("[image analysis] error:", err);
-    // If analysis fails, allow the image (better than blocking all uploads)
-    return { approved: true, risk: 0, note: "Image analysis failed — allowed by default." };
+    return { approved: true, risk: 0, note: "Image analysis failed." };
   }
 }

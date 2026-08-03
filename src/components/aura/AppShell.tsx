@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Home,
   Compass,
@@ -40,6 +40,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { CreatePostDialog } from "./CreatePostDialog";
 import { EditPostDialog } from "./EditPostDialog";
 import { EditProfileDialog } from "./EditProfileDialog";
+import { LegalLinks, LegalPage as LegalPageComp } from "./LegalPages";
 import { useToast } from "@/hooks/use-toast";
 
 export function AppShell() {
@@ -299,6 +300,10 @@ export function AppShell() {
         </div>
       </nav>
 
+      {legalPage && (
+        <LegalPageComp page={legalPage as any} onBack={() => setLegalPage(null)} />
+      )}
+      <LegalLinks onSelect={(p) => setLegalPage(p)} />
       <CreatePostDialog />
       <EditPostDialog />
       <EditProfileDialog />
